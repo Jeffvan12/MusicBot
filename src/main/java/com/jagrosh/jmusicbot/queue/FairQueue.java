@@ -16,9 +16,11 @@
 package com.jagrosh.jmusicbot.queue;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -26,96 +28,160 @@ import java.util.Set;
  * @param <T>
  */
 public class FairQueue<T extends Queueable> {
-    private final List<T> list = new ArrayList<>();
-    private final Set<Long> set = new HashSet<>();
+    private final Map<Long, List<T>> lists = new HashMap<>();
+    private final List<Long> listOrder = new ArrayList<>();
+
+    // TODO Implement this queue.
+    private final List<T> repeatList = new ArrayList<>();
 
     public int add(T item) {
-        int lastIndex;
-        for (lastIndex = list.size() - 1; lastIndex > -1; lastIndex--) {
-            if (list.get(lastIndex).getIdentifier() == item.getIdentifier()) {
-                break;
+        List<T> list = getList(item.getIdentifier());
+        list.add(item);
+        return globalIndex(item.getIdentifier(), list.size() - 1);
+    }
+
+    private int globalIndex(long identifier, int index) {
+        int orderIndex = listOrder.indexOf(identifier);
+        if (orderIndex == -1) {
+            return -1;
+        }
+
+        int before = 0;
+        for (int i = 0; i < listOrder.size(); i++) {
+            int otherSize = lists.get(listOrder.get(i)).size();
+            before += Math.max(otherSize, index);
+            if (i < orderIndex) {
+                before++;
             }
         }
-        lastIndex++;
-        set.clear();
-        for (; lastIndex < list.size(); lastIndex++) {
-            if (set.contains(list.get(lastIndex).getIdentifier())) {
-                break;
+        return before;
+    }
+
+    private ListIndex localIndex(int index) {
+        List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
+
+        int individualIndex;
+        int listIndex;
+
+        boolean needsRepeat = true;
+        do {
+            if (orderedLists.isEmpty()) {
+                return new ListIndex(0, -1);
             }
-            set.add(list.get(lastIndex).getIdentifier());
-        }
-        list.add(lastIndex, item);
-        return lastIndex;
+
+            individualIndex = index / orderedLists.size();
+            listIndex = index % orderedLists.size();
+
+            ListIterator<List<T>> li = orderedLists.listIterator();
+            needsRepeat = false;
+            while (li.hasNext()) {
+                List<T> list = li.next();
+                if (list.size() <= individualIndex) {
+                    li.remove();
+                    index -= list.size();
+                    needsRepeat = true;
+                }
+            }
+        } while (needsRepeat);
+
+        return new ListIndex(listOrder.get(listIndex), individualIndex);
     }
 
     public void addAt(int index, T item) {
-        if (index >= list.size()) {
-            list.add(item);
-        } else {
-            list.add(index, item);
-        }
+        ListIndex listIndex = localIndex(index);
+        List<T> list = getList(item.getIdentifier());
+        list.add(Math.max(listIndex.index, list.size()), item);
+    }
+
+    public int addRepeat(T item) {
+        repeatList.add(item);
+        return repeatList.size() - 1;
     }
 
     public int size() {
-        return list.size();
+        return lists.values().stream().mapToInt(List::size).sum();
     }
 
     public T pull() {
+        Long identifier = listOrder.remove(0);
+        if (identifier == null) {
+            return null;
+        }
+        listOrder.add(identifier);
+
+        List<T> list = lists.get(identifier);
         return list.remove(0);
     }
 
     public boolean isEmpty() {
-        return list.isEmpty();
+        return lists.values().stream().allMatch(List::isEmpty);
     }
 
     public List<T> getList() {
-        return list;
+        List<T> generalList = new ArrayList<>();
+        List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
+        int size = size();
+        int i = 0;
+
+        outer: for (int individualIndex = 0;; individualIndex++) {
+            for (List<T> list : orderedLists) {
+                if (list.size() <= individualIndex) {
+                    continue;
+                }
+
+                generalList.add(list.get(individualIndex));
+                i++;
+                if (i == size) {
+                    break outer;
+                }
+            }
+        }
+
+        return generalList;
+    }
+
+    public List<T> getList(long identifier) {
+        return lists.computeIfAbsent(identifier, id -> new ArrayList<>());
     }
 
     public T get(int index) {
-        return list.get(index);
+        ListIndex listIndex = localIndex(index);
+        return lists.get(listIndex.identifier).get(listIndex.index);
     }
 
     public T remove(int index) {
-        return list.remove(index);
+        ListIndex listIndex = localIndex(index);
+        return lists.get(listIndex.identifier).remove(listIndex.index);
     }
 
     public int removeAll(long identifier) {
-        int count = 0;
-        for (int i = list.size() - 1; i >= 0; i--) {
-            if (list.get(i).getIdentifier() == identifier) {
-                list.remove(i);
-                count++;
-            }
-        }
+        List<T> list = getList(identifier);
+
+        int count = list.size();
+        list.clear();
         return count;
     }
 
     public void clear() {
-        list.clear();
+        for (List<T> list : lists.values()) {
+            list.clear();
+        }
     }
 
     public int shuffle(long identifier) {
-        List<Integer> iset = new ArrayList<>();
-        for (int i = 0; i < list.size(); i++) {
-            if (list.get(i).getIdentifier() == identifier) {
-                iset.add(i);
-            }
+        List<T> list = getList(identifier);
+        for (int i = list.size(); i >= 0; i--) {
+            int otherIndex = (int) (Math.random() * i);
+            T temp = list.get(i);
+            list.set(i, list.get(otherIndex));
+            list.set(otherIndex, temp);
         }
-
-        for (int j = 0; j < iset.size(); j++) {
-            int first = iset.get(j);
-            int second = iset.get((int) (Math.random() * (iset.size() - j) + j));
-            T temp = list.get(first);
-            list.set(first, list.get(second));
-            list.set(second, temp);
-        }
-        return iset.size();
+        return list.size();
     }
 
     public void skip(int number) {
         for (int i = 0; i < number; i++) {
-            list.remove(0);
+            pull();
         }
     }
 
@@ -127,8 +193,24 @@ public class FairQueue<T extends Queueable> {
      * @return the moved item
      */
     public T moveItem(int from, int to) {
-        T item = list.remove(from);
-        list.add(to, item);
+        ListIndex listIndexFrom = localIndex(from);
+        ListIndex listIndexTo = localIndex(to);
+        List<T> list = getList(listIndexFrom.identifier);
+
+        T item = list.remove(listIndexFrom.index);
+        // Insert it into the same queue as it was taken from, even if it's not quite
+        // right.
+        list.add(Math.min(listIndexTo.index, list.size() - 1), item);
         return item;
+    }
+
+    private static class ListIndex {
+        public long identifier;
+        public int index;
+
+        public ListIndex(long identifier, int index) {
+            this.identifier = identifier;
+            this.index = index;
+        }
     }
 }
