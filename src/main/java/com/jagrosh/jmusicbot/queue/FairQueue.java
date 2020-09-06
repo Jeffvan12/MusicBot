@@ -23,9 +23,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- *
- * @author John Grosh (jagrosh)
  * @param <T>
+ * @author John Grosh (jagrosh)
  */
 public class FairQueue<T extends Queueable> {
     private final Map<Long, List<T>> lists = new HashMap<>();
@@ -123,7 +122,8 @@ public class FairQueue<T extends Queueable> {
         int size = size();
         int i = 0;
 
-        outer: for (int individualIndex = 0;; individualIndex++) {
+        outer:
+        for (int individualIndex = 0; ; individualIndex++) {
             for (List<T> list : orderedLists) {
                 if (list.size() <= individualIndex) {
                     continue;
@@ -190,7 +190,7 @@ public class FairQueue<T extends Queueable> {
 
     /**
      * Move an item to a different position in the list
-     * 
+     *
      * @param from The position of the item
      * @param to   The new position of the item
      * @return the moved item
