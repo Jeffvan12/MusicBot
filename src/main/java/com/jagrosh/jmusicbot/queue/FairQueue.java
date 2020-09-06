@@ -141,7 +141,10 @@ public class FairQueue<T extends Queueable> {
     }
 
     public List<T> getList(long identifier) {
-        return lists.computeIfAbsent(identifier, id -> new ArrayList<>());
+        return lists.computeIfAbsent(identifier, id -> {
+            listOrder.add(id);
+            return new ArrayList<>();
+        });
     }
 
     public T get(int index) {
