@@ -61,23 +61,11 @@ public class FairQueue<T extends Queueable> {
     }
 
     public T pull() {
-        if (listOrder.isEmpty()) {
-            return repeatList.remove(0);
-        }
-        long identifier = listOrder.remove(0);
-
-        List<T> list = lists.get(identifier);
-        T item = list.remove(0);
-        if (list.isEmpty()) {
-            lists.remove(identifier);
-        } else {
-            listOrder.add(identifier);
-        }
-        return item;
+        return pullNextList().remove(0);
     }
 
     public boolean isEmpty() {
-        return lists.values().stream().allMatch(List::isEmpty) && repeatList.isEmpty();
+        return lists.values().stream().allMatch(List::isEmpty);
     }
 
     public List<T> getList() {
@@ -114,22 +102,20 @@ public class FairQueue<T extends Queueable> {
         ListIndex listIndex = localIndex(index);
         List<T> list = lists.get(listIndex.identifier);
 
-        T item = list.remove(listIndex.index);
-        if (list.isEmpty()) {
-            lists.remove(listIndex.identifier);
-        }
-        return item;
+        return list.remove(listIndex.index);
     }
 
     public int removeAll(long identifier) {
-        List<T> list = lists.remove(identifier);
-        return list == null ? 0 : list.size();
+        List<T> list = getOrCreateList(identifier);
+        int size = list.size();
+        list.clear();
+        return size;
     }
 
     public void clear() {
-        lists.clear();
-        repeatList.clear();
-        lists.put(REPEAT_SENTINEL, repeatList);
+        for (List<T> list : lists.values()) {
+            list.clear();
+        }
     }
 
     public int shuffle(long identifier) {
@@ -138,7 +124,7 @@ public class FairQueue<T extends Queueable> {
             return 0;
         }
 
-        for (int i = list.size() - 1; i >= 0; i--) {
+        for (int i = list.size() - 2; i >= 0; i--) {
             int otherIndex = (int) (Math.random() * (i + 1));
             T temp = list.get(i);
             list.set(i, list.get(otherIndex));
@@ -170,6 +156,20 @@ public class FairQueue<T extends Queueable> {
         // the right right location.
         list.add(Math.min(listIndexTo.index, list.size() - 1), item);
         return item;
+    }
+
+    private List<T> pullNextList() {
+        ListIterator<Long> li = listOrder.listIterator();
+        while (li.hasNext()) {
+            long id = li.next();
+            List<T> list = lists.get(id);
+            if (!list.isEmpty()) {
+                li.remove();
+                listOrder.add(id);
+                return list;
+            }
+        }
+        return repeatList;
     }
 
     private int globalIndex(long identifier, int index) {
@@ -225,7 +225,7 @@ public class FairQueue<T extends Queueable> {
 
     private List<T> getOrCreateList(long identifier) {
         return lists.computeIfAbsent(identifier, id -> {
-            listOrder.add(id);
+            listOrder.add(0, id);
             return new ArrayList<>();
         });
     }
