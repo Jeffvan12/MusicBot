@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  */
 public class FairQueue<T extends Queueable> {
     // Just hope that no-one actually has this id.
-    private static final long REPEAT_SENTINEL = Long.MIN_VALUE;
+    public static final long REPEAT_SENTINEL = Long.MIN_VALUE;
 
     private final Map<Long, List<T>> lists = new HashMap<>();
     private final List<Long> listOrder = new ArrayList<>();
@@ -99,6 +99,10 @@ public class FairQueue<T extends Queueable> {
         generalList.addAll(repeatList);
 
         return generalList;
+    }
+
+    public List<T> getList(long identifier) {
+        return lists.get(identifier);
     }
 
     public T get(int index) {
