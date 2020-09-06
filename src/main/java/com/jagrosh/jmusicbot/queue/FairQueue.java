@@ -46,10 +46,11 @@ public class FairQueue<T extends Queueable> {
         return globalIndex(item.getIdentifier(), list.size() - 1);
     }
 
-    public void addAt(int index, T item) {
+    public int addAt(int index, T item) {
         ListIndex listIndex = localIndex(index);
         List<T> list = getOrCreateList(item.getIdentifier());
-        list.add(Math.max(listIndex.index, list.size()), item);
+        list.add(Math.min(listIndex.index, list.size()), item);
+        return globalIndex(item.getIdentifier(), listIndex.index);
     }
 
     public int addRepeat(T item) {
