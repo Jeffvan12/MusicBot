@@ -27,19 +27,152 @@ import java.util.stream.Collectors;
  * @author John Grosh (jagrosh)
  */
 public class FairQueue<T extends Queueable> {
+    // Just hope that no-one actually has this id.
+    private static final long REPEAT_SENTINEL = Long.MIN_VALUE;
+
     private final Map<Long, List<T>> lists = new HashMap<>();
     private final List<Long> listOrder = new ArrayList<>();
 
-    // TODO Implement this queue.
     private final List<T> repeatList = new ArrayList<>();
 
+    public FairQueue() {
+        lists.put(REPEAT_SENTINEL, repeatList);
+    }
+
     public int add(T item) {
-        List<T> list = getList(item.getIdentifier());
+        List<T> list = getOrCreateList(item.getIdentifier());
         list.add(item);
         return globalIndex(item.getIdentifier(), list.size() - 1);
     }
 
+    public void addAt(int index, T item) {
+        ListIndex listIndex = localIndex(index);
+        List<T> list = getOrCreateList(item.getIdentifier());
+        list.add(Math.max(listIndex.index, list.size()), item);
+    }
+
+    public int addRepeat(T item) {
+        repeatList.add(item);
+        return repeatList.size() - 1;
+    }
+
+    public int size() {
+        return lists.values().stream().mapToInt(List::size).sum();
+    }
+
+    public T pull() {
+        if (listOrder.isEmpty()) {
+            return repeatList.remove(0);
+        }
+        long identifier = listOrder.remove(0);
+
+        List<T> list = lists.get(identifier);
+        T item = list.remove(0);
+        if (list.isEmpty()) {
+            lists.remove(identifier);
+        } else {
+            listOrder.add(identifier);
+        }
+        return item;
+    }
+
+    public boolean isEmpty() {
+        return lists.values().stream().allMatch(List::isEmpty) && repeatList.isEmpty();
+    }
+
+    public List<T> getList() {
+        List<T> generalList = new ArrayList<>();
+
+        List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
+        for (int individualIndex = 0; !orderedLists.isEmpty(); individualIndex++) {
+            ListIterator<List<T>> li = orderedLists.listIterator();
+            while (li.hasNext()) {
+                List<T> list = li.next();
+                if (list.size() <= individualIndex) {
+                    li.remove();
+                    continue;
+                }
+                generalList.add(list.get(individualIndex));
+            }
+        }
+
+        generalList.addAll(repeatList);
+
+        return generalList;
+    }
+
+    public T get(int index) {
+        ListIndex listIndex = localIndex(index);
+        return lists.get(listIndex.identifier).get(listIndex.index);
+    }
+
+    public T remove(int index) {
+        ListIndex listIndex = localIndex(index);
+        List<T> list = lists.get(listIndex.identifier);
+
+        T item = list.remove(listIndex.index);
+        if (list.isEmpty()) {
+            lists.remove(listIndex.identifier);
+        }
+        return item;
+    }
+
+    public int removeAll(long identifier) {
+        List<T> list = lists.remove(identifier);
+        return list == null ? 0 : list.size();
+    }
+
+    public void clear() {
+        lists.clear();
+        repeatList.clear();
+        lists.put(REPEAT_SENTINEL, repeatList);
+    }
+
+    public int shuffle(long identifier) {
+        List<T> list = lists.get(identifier);
+        if (list == null) {
+            return 0;
+        }
+
+        for (int i = list.size() - 1; i >= 0; i--) {
+            int otherIndex = (int) (Math.random() * (i + 1));
+            T temp = list.get(i);
+            list.set(i, list.get(otherIndex));
+            list.set(otherIndex, temp);
+        }
+        return list.size();
+    }
+
+    public void skip(int number) {
+        for (int i = 0; i < number; i++) {
+            pull();
+        }
+    }
+
+    /**
+     * Move an item to a different position in the list
+     *
+     * @param from The position of the item
+     * @param to   The new position of the item
+     * @return the moved item
+     */
+    public T moveItem(int from, int to) {
+        ListIndex listIndexFrom = localIndex(from);
+        ListIndex listIndexTo = localIndex(to);
+        List<T> list = lists.get(listIndexFrom.identifier);
+
+        T item = list.remove(listIndexFrom.index);
+        // Insert it into the same queue that it was taken from, even if it's not quite
+        // the right right location.
+        list.add(Math.min(listIndexTo.index, list.size() - 1), item);
+        return item;
+    }
+
     private int globalIndex(long identifier, int index) {
+        if (identifier == REPEAT_SENTINEL) {
+            return size() - repeatList.size() + index;
+        }
+
         int orderIndex = listOrder.indexOf(identifier);
         if (orderIndex == -1) {
             return -1;
@@ -86,125 +219,11 @@ public class FairQueue<T extends Queueable> {
         return new ListIndex(listOrder.get(listIndex), individualIndex);
     }
 
-    public void addAt(int index, T item) {
-        ListIndex listIndex = localIndex(index);
-        List<T> list = getList(item.getIdentifier());
-        list.add(Math.max(listIndex.index, list.size()), item);
-    }
-
-    public int addRepeat(T item) {
-        repeatList.add(item);
-        return repeatList.size() - 1;
-    }
-
-    public int size() {
-        return lists.values().stream().mapToInt(List::size).sum();
-    }
-
-    public T pull() {
-        Long identifier = listOrder.remove(0);
-        if (identifier == null) {
-            return null;
-        }
-        listOrder.add(identifier);
-
-        List<T> list = lists.get(identifier);
-        return list.remove(0);
-    }
-
-    public boolean isEmpty() {
-        return lists.values().stream().allMatch(List::isEmpty);
-    }
-
-    public List<T> getList() {
-        List<T> generalList = new ArrayList<>();
-        List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
-        int size = size();
-        int i = 0;
-
-        outer:
-        for (int individualIndex = 0; ; individualIndex++) {
-            for (List<T> list : orderedLists) {
-                if (list.size() <= individualIndex) {
-                    continue;
-                }
-
-                generalList.add(list.get(individualIndex));
-                i++;
-                if (i == size) {
-                    break outer;
-                }
-            }
-        }
-
-        return generalList;
-    }
-
-    public List<T> getList(long identifier) {
+    private List<T> getOrCreateList(long identifier) {
         return lists.computeIfAbsent(identifier, id -> {
             listOrder.add(id);
             return new ArrayList<>();
         });
-    }
-
-    public T get(int index) {
-        ListIndex listIndex = localIndex(index);
-        return lists.get(listIndex.identifier).get(listIndex.index);
-    }
-
-    public T remove(int index) {
-        ListIndex listIndex = localIndex(index);
-        return lists.get(listIndex.identifier).remove(listIndex.index);
-    }
-
-    public int removeAll(long identifier) {
-        List<T> list = getList(identifier);
-
-        int count = list.size();
-        list.clear();
-        return count;
-    }
-
-    public void clear() {
-        for (List<T> list : lists.values()) {
-            list.clear();
-        }
-    }
-
-    public int shuffle(long identifier) {
-        List<T> list = getList(identifier);
-        for (int i = list.size() - 1; i >= 0; i--) {
-            int otherIndex = (int) (Math.random() * (i + 1));
-            T temp = list.get(i);
-            list.set(i, list.get(otherIndex));
-            list.set(otherIndex, temp);
-        }
-        return list.size();
-    }
-
-    public void skip(int number) {
-        for (int i = 0; i < number; i++) {
-            pull();
-        }
-    }
-
-    /**
-     * Move an item to a different position in the list
-     *
-     * @param from The position of the item
-     * @param to   The new position of the item
-     * @return the moved item
-     */
-    public T moveItem(int from, int to) {
-        ListIndex listIndexFrom = localIndex(from);
-        ListIndex listIndexTo = localIndex(to);
-        List<T> list = getList(listIndexFrom.identifier);
-
-        T item = list.remove(listIndexFrom.index);
-        // Insert it into the same queue as it was taken from, even if it's not quite
-        // right.
-        list.add(Math.min(listIndexTo.index, list.size() - 1), item);
-        return item;
     }
 
     private static class ListIndex {
