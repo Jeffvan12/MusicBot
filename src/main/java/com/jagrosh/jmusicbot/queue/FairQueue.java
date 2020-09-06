@@ -85,7 +85,7 @@ public class FairQueue<T extends Queueable> {
             }
         }
 
-        generalList.addAll(repeatList);
+//        generalList.addAll(repeatList);
 
         return generalList;
     }

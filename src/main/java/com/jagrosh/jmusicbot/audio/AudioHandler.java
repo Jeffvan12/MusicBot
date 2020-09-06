@@ -161,6 +161,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
         votes.clear();
         manager.getBot().getNowplayingHandler().onTrackUpdate(guildId, track, this);
+//        manager.getBot().getNowplayingHandler().setLastNPMessage(getNowPlaying(manager.getBot().getJDA()));
+        //TODO
     }
 
 

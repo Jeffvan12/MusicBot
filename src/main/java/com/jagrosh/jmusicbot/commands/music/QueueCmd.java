@@ -25,12 +25,16 @@ import com.jagrosh.jmusicbot.JMusicBot;
 import com.jagrosh.jmusicbot.audio.AudioHandler;
 import com.jagrosh.jmusicbot.audio.QueuedTrack;
 import com.jagrosh.jmusicbot.commands.MusicCommand;
+import com.jagrosh.jmusicbot.queue.FairQueue;
 import com.jagrosh.jmusicbot.settings.Settings;
 import com.jagrosh.jmusicbot.utils.FormatUtil;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.dv8tion.jda.core.MessageBuilder;
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.exceptions.PermissionException;
+
+import javax.sound.midi.Track;
 
 /**
  * @author John Grosh <john.a.grosh@gmail.com>
@@ -74,7 +78,9 @@ public class QueueCmd extends MusicCommand {
         }
         AudioHandler ah = (AudioHandler) event.getGuild().getAudioManager().getSendingHandler();
         List<QueuedTrack> list = ah.getQueue().getList();
-        if (list.isEmpty()) {
+        List<QueuedTrack> repeat_queue = ah.getQueue().getList(FairQueue.REPEAT_SENTINEL);
+
+        if (list.isEmpty() && repeat_queue.isEmpty()) {
             Message nowp = ah.getNowPlaying(event.getJDA());
             Message nonowp = ah.getNoMusicPlaying(event.getJDA());
             Message built = new MessageBuilder()
@@ -87,30 +93,47 @@ public class QueueCmd extends MusicCommand {
             });
             return;
         }
-        String[] songs = new String[list.size()];
+        String[] songs = new String[list.size() + repeat_queue.size()];
         long total = 0;
         for (int i = 0; i < list.size(); i++) {
             total += list.get(i).getTrack().getDuration();
             songs[i] = list.get(i).toString();
         }
+
+        long repeat_total = 0;
+        for (int i = 0; i < repeat_queue.size(); i++) {
+            repeat_total += repeat_queue.get(i).getTrack().getDuration();
+            AudioTrack track = repeat_queue.get(i).getTrack();
+            songs[i + list.size()] =  "`[" + FormatUtil.formatTime(track.getDuration()) + "]` ** " + REPEAT + " "  + track.getInfo().title + "** - <@" + track.getUserData(Long.class) + ">";
+        }
+
+
+
         Settings settings = event.getClient().getSettingsFor(event.getGuild());
         long fintotal = total;
-        builder.setText((i1, i2) -> getQueueTitle(ah, event.getClient().getSuccess(), songs.length, fintotal, settings.getRepeatMode()))
+        long finrepeattotal = repeat_total;
+        builder.setText((i1, i2) -> getQueueTitle(ah, event.getClient().getSuccess(), list.size(), fintotal, settings.getRepeatMode(), finrepeattotal, repeat_queue.size()))
                 .setItems(songs)
                 .setUsers(event.getAuthor())
                 .setColor(event.getSelfMember().getColor())
         ;
         builder.build().paginate(event.getChannel(), pagenum);
+
     }
 
-    private String getQueueTitle(AudioHandler ah, String success, int songslength, long total, boolean repeatmode) {
+
+
+
+
+    private String getQueueTitle(AudioHandler ah, String success, int songslength, long total, boolean repeatmode, long repeattotal, int repeatlength) {
         StringBuilder sb = new StringBuilder();
         if (ah.getPlayer().getPlayingTrack() != null) {
             sb.append(ah.getPlayer().isPaused() ? JMusicBot.PAUSE_EMOJI : JMusicBot.PLAY_EMOJI).append(" **")
                     .append(ah.getPlayer().getPlayingTrack().getInfo().title).append("**\n");
         }
-        return FormatUtil.filter(sb.append(success).append(" Current Queue | ").append(songslength)
-                .append(" entries | `").append(FormatUtil.formatTime(total)).append("` ")
+        return FormatUtil.filter(sb.append(success).append(" Current Queue | ").append(songslength).append(" (").append(repeatlength).append(") ")
+                .append(" entries | `").append(FormatUtil.formatTime(total)).append(" (").append(FormatUtil.formatTime(repeattotal))
+                .append(")").append("` ")
                 .append(repeatmode ? "| " + REPEAT : "").toString());
     }
 }
