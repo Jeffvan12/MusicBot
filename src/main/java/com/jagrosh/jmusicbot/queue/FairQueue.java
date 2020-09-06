@@ -16,6 +16,7 @@
 package com.jagrosh.jmusicbot.queue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -90,7 +91,7 @@ public class FairQueue<T extends Queueable> {
     }
 
     public List<T> getList(long identifier) {
-        return lists.get(identifier);
+        return Collections.unmodifiableList(getOrCreateList(identifier));
     }
 
     public T get(int index) {
@@ -119,10 +120,7 @@ public class FairQueue<T extends Queueable> {
     }
 
     public int shuffle(long identifier) {
-        List<T> list = lists.get(identifier);
-        if (list == null) {
-            return 0;
-        }
+        List<T> list = getOrCreateList(identifier);
 
         for (int i = list.size() - 2; i >= 0; i--) {
             int otherIndex = (int) (Math.random() * (i + 1));
@@ -161,11 +159,11 @@ public class FairQueue<T extends Queueable> {
     private List<T> pullNextList() {
         ListIterator<Long> li = listOrder.listIterator();
         while (li.hasNext()) {
-            long id = li.next();
-            List<T> list = lists.get(id);
+            long identifier = li.next();
+            List<T> list = lists.get(identifier); // List must already exist if `identifier` is in `listOrder`.
             if (!list.isEmpty()) {
                 li.remove();
-                listOrder.add(id);
+                listOrder.add(identifier);
                 return list;
             }
         }
