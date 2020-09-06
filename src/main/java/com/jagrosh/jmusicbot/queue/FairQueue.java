@@ -173,8 +173,8 @@ public class FairQueue<T extends Queueable> {
 
     public int shuffle(long identifier) {
         List<T> list = getList(identifier);
-        for (int i = list.size(); i >= 0; i--) {
-            int otherIndex = (int) (Math.random() * i);
+        for (int i = list.size() - 1; i >= 0; i--) {
+            int otherIndex = (int) (Math.random() * (i + 1));
             T temp = list.get(i);
             list.set(i, list.get(otherIndex));
             list.set(otherIndex, temp);
