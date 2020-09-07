@@ -151,6 +151,14 @@ public class FairQueue<T extends Queueable> {
         }
     }
 
+    public int skipAll(long identifier) {
+        List<T> list = getOrCreateList(identifier);
+        repeatList.addAll(list);
+        int size = list.size();
+        list.clear();
+        return size;
+    }
+
     /**
      * Move an item to a different position in the list
      *

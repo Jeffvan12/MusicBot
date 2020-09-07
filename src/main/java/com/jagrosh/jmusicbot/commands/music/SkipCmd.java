@@ -37,8 +37,17 @@ public class SkipCmd extends MusicCommand {
     @Override
     public void doCommand(CommandEvent event) {
         AudioHandler handler = (AudioHandler) event.getGuild().getAudioManager().getSendingHandler();
+        if (event.getArgs().equalsIgnoreCase("all")) {
+            int count = handler.getQueue().skipAll(event.getAuthor().getIdLong());
+            if (count == 0) {
+                event.replyError("You don't have any songs in the queue!");
+            } else {
+                event.replySuccess("Skipped all " + Integer.toString(count) + " songs in your queue");
+            }
+        }
         if (event.getAuthor().getIdLong() == handler.getRequester()) {
-            event.reply(event.getClient().getSuccess() + " Skipped **" + handler.getPlayer().getPlayingTrack().getInfo().title + "**");
+            event.reply(event.getClient().getSuccess() + " Skipped **"
+                    + handler.getPlayer().getPlayingTrack().getInfo().title + "**");
             handler.getPlayer().stopTrack();
         } else {
             int listeners = (int) event.getSelfMember().getVoiceState().getChannel().getMembers().stream()
@@ -56,8 +65,10 @@ public class SkipCmd extends MusicCommand {
             msg += skippers + " votes, " + required + "/" + listeners + " needed]`";
             if (skippers >= required) {
                 User u = event.getJDA().getUserById(handler.getRequester());
-                msg += "\n" + event.getClient().getSuccess() + " Skipped **" + handler.getPlayer().getPlayingTrack().getInfo().title
-                        + "**" + (handler.getRequester() == 0 ? "" : " (requested by " + (u == null ? "someone" : "**" + u.getName() + "**") + ")");
+                msg += "\n" + event.getClient().getSuccess() + " Skipped **"
+                        + handler.getPlayer().getPlayingTrack().getInfo().title + "**"
+                        + (handler.getRequester() == 0 ? ""
+                                : " (requested by " + (u == null ? "someone" : "**" + u.getName() + "**") + ")");
                 handler.getPlayer().stopTrack();
             }
             event.reply(msg);
