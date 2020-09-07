@@ -9,8 +9,6 @@ import com.jagrosh.jmusicbot.settings.Settings;
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.User;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,7 +17,7 @@ import java.util.stream.IntStream;
 public class MyQueueRemoveCmd extends MusicCommand {
     public MyQueueRemoveCmd(Bot bot) {
         super(bot);
-        this.name = "remove";
+        this.name = "myremove";
         this.help = "removes a song from the queue";
         this.arguments = "<position|ALL>";
         this.aliases = bot.getConfig().getAliases(this.name);
@@ -42,11 +40,21 @@ public class MyQueueRemoveCmd extends MusicCommand {
                 event.replySuccess("Successfully removed your " + count + " entries.");
             return;
         }
-        int pos;
 
         String input = event.getArgs();
 
-        pos = Integer.parseInt(event.getArgs());
+        User u;
+        try {
+            u = event.getJDA().getUserById(event.getAuthor().getIdLong());
+        } catch (Exception e) {
+            u = null;
+        }
+
+        long identifier = event.getAuthor().getIdLong();
+
+        if (handler.getQueue().getList(identifier).size() == 0){
+            event.replyError("You don't have a queue");
+        }
 
         if (input.contains("-")){
             List<Integer> range = Arrays.stream(input.split("-")).map(Integer::parseInt).collect(Collectors.toList());
@@ -54,39 +62,68 @@ public class MyQueueRemoveCmd extends MusicCommand {
                 event.replyError("Removing range of positions must be in format x-y where y >= x!");
                 return;
             }
+            List<Integer> toRemove = IntStream.rangeClosed(range.get(0) - 1, range.get(1) - 1).boxed().collect(Collectors.toList());
 
-            List<Integer> toRemovePos = IntStream.rangeClosed(range.get(0), range.get(1)).boxed().collect(Collectors.toList());
 
-            handler.getQueue().specificQueueRemove(toRemovePos, event.getAuthor().getIdLong());
-        } else if(input.contains(",")){
-            List<Integer> toRemove = Arrays.stream(input.split(",")).map(Integer::parseInt).collect(Collectors.toList());
 
-        }
+            List<QueuedTrack> qts = handler.getQueue().specificQueueRemove(toRemove, event.getAuthor().getIdLong());
 
-        if (pos < 1 || pos > handler.getQueue().size()) {
-            event.replyError("Position must be a valid integer between 1 and " + handler.getQueue().size() + "!");
-            return;
-        }
-        Settings settings = event.getClient().getSettingsFor(event.getGuild());
-        boolean isDJ = event.getMember().hasPermission(Permission.MANAGE_SERVER);
-        if (!isDJ)
-            isDJ = event.getMember().getRoles().contains(settings.getRole(event.getGuild()));
-        QueuedTrack qt = handler.getQueue().get(pos - 1);
-        if (qt.getIdentifier() == event.getAuthor().getIdLong()) {
-            handler.getQueue().remove(pos - 1);
-            event.replySuccess("Removed **" + qt.getTrack().getInfo().title + "** from the queue");
-        } else if (isDJ) {
-            handler.getQueue().remove(pos - 1);
-            User u;
-            try {
-                u = event.getJDA().getUserById(qt.getIdentifier());
-            } catch (Exception e) {
-                u = null;
+            if (qts.size() > 10){
+                event.reply("Removed " + qts.size() + " songs");
+                return;
             }
-            event.replySuccess("Removed **" + qt.getTrack().getInfo().title
-                    + "** from the queue (requested by " + (u == null ? "someone" : "**" + u.getName() + "**") + ")");
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = qts.size() - 1; i >= 0; i--) {
+                sb.append(event.getClient().getSuccess()).append(" ").append("Removed **").append(" ").append(qts.get(i).getTrack().getInfo().title).append("**\n");
+            }
+
+            event.reply(sb.toString());
+
+        } else if(input.contains(",")){
+            List<Integer> toRemove = Arrays.stream(input.split(",")).map(x -> Integer.parseInt(x) - 1).collect(Collectors.toList());
+            List<QueuedTrack> qts = handler.getQueue().specificQueueRemove(toRemove, event.getAuthor().getIdLong());
+
+            if (qts.size() > 10){
+                event.reply("Removed " + qts.size() + " songs");
+                return;
+            }
+            StringBuilder sb = new StringBuilder();
+
+            for (int i = qts.size() - 1; i >= 0; i--) {
+                sb.append(event.getClient().getSuccess()).append(" ").append("Removed **").append(" ").append(qts.get(i).getTrack().getInfo().title).append("**\n");
+            }
+
+            event.reply(sb.toString());
+
         } else {
-            event.replyError("You cannot remove **" + qt.getTrack().getInfo().title + "** because you didn't add it!");
+            int pos;
+            try {
+                pos = Integer.parseInt(event.getArgs());
+            } catch(NumberFormatException e){
+                pos = 0;
+            }
+
+            if (pos < 1 || pos > handler.getQueue().size()) {
+                event.replyError("Position must be a valid integer between 1 and " + handler.getQueue().size() + "!");
+                return;
+            }
+            Settings settings = event.getClient().getSettingsFor(event.getGuild());
+            boolean isDJ = event.getMember().hasPermission(Permission.MANAGE_SERVER);
+            if (!isDJ)
+                isDJ = event.getMember().getRoles().contains(settings.getRole(event.getGuild()));
+            QueuedTrack qt = handler.getQueue().get(pos - 1);
+            if (qt.getIdentifier() == event.getAuthor().getIdLong()) {
+                handler.getQueue().specificQueueRemove(pos - 1, event.getAuthor().getIdLong());
+                event.replySuccess("Removed **" + qt.getTrack().getInfo().title + "** from the queue");
+            } else if (isDJ) {
+                handler.getQueue().specificQueueRemove(pos - 1, event.getAuthor().getIdLong());
+                event.replySuccess("Removed **" + qt.getTrack().getInfo().title
+                        + "** from the queue (requested by " + (u == null ? "someone" : "**" + u.getName() + "**") + ")");
+            } else {
+                event.replyError("You cannot remove **" + qt.getTrack().getInfo().title + "** because you didn't add it!");
+            }
         }
+
     }
 }
