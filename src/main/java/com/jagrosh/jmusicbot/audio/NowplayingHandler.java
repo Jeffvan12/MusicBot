@@ -37,7 +37,7 @@ import net.dv8tion.jda.core.exceptions.RateLimitedException;
  * @author John Grosh (john.a.grosh@gmail.com)
  */
 public class NowplayingHandler {
-    private static final long UPDATE_TIME = 1;
+    private static final long UPDATE_TIME = 10;
     private static final TimeUnit UPDATE_TIME_UNIT = TimeUnit.SECONDS;
 
     private final Bot bot;

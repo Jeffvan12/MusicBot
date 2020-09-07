@@ -1,18 +1,3 @@
-/*
- * Copyright 2016 John Grosh <john.a.grosh@gmail.com>.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.jagrosh.jmusicbot.commands.music;
 
 import com.jagrosh.jdautilities.command.CommandEvent;
@@ -24,11 +9,15 @@ import com.jagrosh.jmusicbot.settings.Settings;
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.User;
 
-/**
- * @author John Grosh <john.a.grosh@gmail.com>
- */
-public class RemoveCmd extends MusicCommand {
-    public RemoveCmd(Bot bot) {
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class MyQueueRemoveCmd extends MusicCommand {
+    public MyQueueRemoveCmd(Bot bot) {
         super(bot);
         this.name = "remove";
         this.help = "removes a song from the queue";
@@ -37,7 +26,6 @@ public class RemoveCmd extends MusicCommand {
         this.beListening = true;
         this.bePlaying = true;
     }
-
 
     @Override
     public void doCommand(CommandEvent event) {
@@ -55,11 +43,26 @@ public class RemoveCmd extends MusicCommand {
             return;
         }
         int pos;
-        try {
-            pos = Integer.parseInt(event.getArgs());
-        } catch (NumberFormatException e) {
-            pos = 0;
+
+        String input = event.getArgs();
+
+        pos = Integer.parseInt(event.getArgs());
+
+        if (input.contains("-")){
+            List<Integer> range = Arrays.stream(input.split("-")).map(Integer::parseInt).collect(Collectors.toList());
+            if (range.size() != 2 && range.get(1) >= range.get(0)){
+                event.replyError("Removing range of positions must be in format x-y where y >= x!");
+                return;
+            }
+
+            List<Integer> toRemovePos = IntStream.rangeClosed(range.get(0), range.get(1)).boxed().collect(Collectors.toList());
+
+            handler.getQueue().specificQueueRemove(toRemovePos, event.getAuthor().getIdLong());
+        } else if(input.contains(",")){
+            List<Integer> toRemove = Arrays.stream(input.split(",")).map(Integer::parseInt)
+
         }
+
         if (pos < 1 || pos > handler.getQueue().size()) {
             event.replyError("Position must be a valid integer between 1 and " + handler.getQueue().size() + "!");
             return;

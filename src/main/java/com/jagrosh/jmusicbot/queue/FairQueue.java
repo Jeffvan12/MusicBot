@@ -105,6 +105,21 @@ public class FairQueue<T extends Queueable> {
         return lists.get(listIndex.identifier).remove(listIndex.index);
     }
 
+    public T specificQueueRemove(int index, long identifier) {
+        return lists.get(identifier).remove(index);
+    }
+
+    public List<T> specificQueueRemove(List<Integer> indexes, long identifier) {
+        List<T> queue = lists.get(identifier);
+        List<T> removed = new ArrayList<>();
+
+        for (int i = queue.size() - 1; i >= 0; i++){
+            removed.add(specificQueueRemove(i, identifier));
+        }
+
+        return removed;
+    }
+
     public int removeAll(long identifier) {
         List<T> list = getOrCreateList(identifier);
         int size = list.size();
