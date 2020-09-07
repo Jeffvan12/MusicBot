@@ -86,7 +86,7 @@ public class FairQueue<T extends Queueable> {
             }
         }
 
-//        generalList.addAll(repeatList);
+        // generalList.addAll(repeatList);
 
         return generalList;
     }
@@ -102,9 +102,7 @@ public class FairQueue<T extends Queueable> {
 
     public T remove(int index) {
         ListIndex listIndex = localIndex(index);
-        List<T> list = lists.get(listIndex.identifier);
-
-        return list.remove(listIndex.index);
+        return lists.get(listIndex.identifier).remove(listIndex.index);
     }
 
     public int removeAll(long identifier) {
@@ -198,10 +196,10 @@ public class FairQueue<T extends Queueable> {
         int individualIndex;
         int listIndex;
 
-        boolean needsRepeat = true;
+        boolean needsRepeat;
         do {
             if (orderedLists.isEmpty()) {
-                return new ListIndex(0, -1);
+                return new ListIndex(REPEAT_SENTINEL, index);
             }
 
             individualIndex = index / orderedLists.size();
