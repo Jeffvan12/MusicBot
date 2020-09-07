@@ -191,6 +191,7 @@ public class FairQueue<T extends Queueable> {
     }
 
     private ListIndex localIndex(int index) {
+        List<Long> reducedListOrder = new ArrayList<>(listOrder);
         List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
 
         int individualIndex;
@@ -205,19 +206,24 @@ public class FairQueue<T extends Queueable> {
             individualIndex = index / orderedLists.size();
             listIndex = index % orderedLists.size();
 
-            ListIterator<List<T>> li = orderedLists.listIterator();
+            ListIterator<Long> reducedOrderIter = reducedListOrder.listIterator();
+            ListIterator<List<T>> orderedListsIter = orderedLists.listIterator();
             needsRepeat = false;
-            while (li.hasNext()) {
-                List<T> list = li.next();
+
+            while (reducedOrderIter.hasNext() && orderedListsIter.hasNext()) {
+                reducedOrderIter.next();
+                List<T> list = orderedListsIter.next();
                 if (list.size() <= individualIndex) {
-                    li.remove();
+                    reducedOrderIter.remove();
+                    orderedListsIter.remove();
+
                     index -= list.size();
                     needsRepeat = true;
                 }
             }
         } while (needsRepeat);
 
-        return new ListIndex(listOrder.get(listIndex), individualIndex);
+        return new ListIndex(reducedListOrder.get(listIndex), individualIndex);
     }
 
     private List<T> getOrCreateList(long identifier) {
