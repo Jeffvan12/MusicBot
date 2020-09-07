@@ -44,6 +44,7 @@ public class SkipCmd extends MusicCommand {
             } else {
                 event.replySuccess("Skipped all " + Integer.toString(count) + " songs in your queue");
             }
+            return;
         }
         if (event.getAuthor().getIdLong() == handler.getRequester()) {
             event.reply(event.getClient().getSuccess() + " Skipped **"
