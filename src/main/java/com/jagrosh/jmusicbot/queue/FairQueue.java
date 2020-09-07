@@ -182,7 +182,7 @@ public class FairQueue<T extends Queueable> {
         int before = 0;
         for (int i = 0; i < listOrder.size(); i++) {
             int otherSize = lists.get(listOrder.get(i)).size();
-            before += Math.max(otherSize, index);
+            before += Math.min(otherSize, index);
             if (i < orderIndex) {
                 before++;
             }
