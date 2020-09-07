@@ -59,7 +59,7 @@ public class MyQueueRemoveCmd extends MusicCommand {
 
             handler.getQueue().specificQueueRemove(toRemovePos, event.getAuthor().getIdLong());
         } else if(input.contains(",")){
-            List<Integer> toRemove = Arrays.stream(input.split(",")).map(Integer::parseInt)
+            List<Integer> toRemove = Arrays.stream(input.split(",")).map(Integer::parseInt).collect(Collectors.toList());
 
         }
 
