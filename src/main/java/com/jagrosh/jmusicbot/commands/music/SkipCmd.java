@@ -42,7 +42,7 @@ public class SkipCmd extends MusicCommand {
             if (count == 0) {
                 event.replyError("You don't have any songs in the queue!");
             } else {
-                event.replySuccess("Skipped all " + Integer.toString(count) + " songs in your queue");
+                event.replySuccess("Skipped all " + Integer.toString(count) + " songs in your queue.");
             }
             return;
         }
