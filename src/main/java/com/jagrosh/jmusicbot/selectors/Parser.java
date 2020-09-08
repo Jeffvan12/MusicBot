@@ -16,7 +16,12 @@ public class Parser {
         if (tokens.size() == 1 && "all".equals(tokens.get(0).getContentString())) {
             return new Selector.All<QueuedTrack>();
         }
-        Selector<QueuedTrack> selector = parseExpr(tokens);
+        Selector<QueuedTrack> selector;
+        try {
+            selector = parseExpr(tokens);
+        } catch (IndexOutOfBoundsException e) {
+            throw new ParseException();
+        }
         if (!tokens.isEmpty()) {
             throw new ParseException();
         }
