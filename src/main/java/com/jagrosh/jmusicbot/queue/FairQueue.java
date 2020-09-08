@@ -19,8 +19,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -75,11 +76,11 @@ public class FairQueue<T extends Queueable> {
 
         List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
         for (int individualIndex = 0; !orderedLists.isEmpty(); individualIndex++) {
-            ListIterator<List<T>> li = orderedLists.listIterator();
-            while (li.hasNext()) {
-                List<T> list = li.next();
+            Iterator<List<T>> iter = orderedLists.iterator();
+            while (iter.hasNext()) {
+                List<T> list = iter.next();
                 if (list.size() <= individualIndex) {
-                    li.remove();
+                    iter.remove();
                     continue;
                 }
                 generalList.add(list.get(individualIndex));
@@ -113,7 +114,7 @@ public class FairQueue<T extends Queueable> {
         List<T> removed = new ArrayList<>();
         indicies.sort(null);
 
-        for (int i = indicies.size() - 1; i >= 0; i--){
+        for (int i = indicies.size() - 1; i >= 0; i--) {
             removed.add(specificQueueRemove(indicies.get(i), identifier));
         }
 
@@ -125,6 +126,22 @@ public class FairQueue<T extends Queueable> {
         int size = list.size();
         list.clear();
         return size;
+    }
+
+    public List<T> removeIf(long identifier, Predicate<T> filter) {
+        List<T> list = getOrCreateList(identifier);
+        List<T> removed = new ArrayList<>();
+
+        list.removeIf(e -> {
+            if (filter.test(e)) {
+                removed.add(e);
+                return true;
+            } else {
+                return false;
+            }
+        });
+
+        return removed;
     }
 
     public void clear() {
@@ -179,12 +196,12 @@ public class FairQueue<T extends Queueable> {
     }
 
     private List<T> pullNextList() {
-        ListIterator<Long> li = listOrder.listIterator();
-        while (li.hasNext()) {
-            long identifier = li.next();
+        Iterator<Long> iter = listOrder.iterator();
+        while (iter.hasNext()) {
+            long identifier = iter.next();
             List<T> list = lists.get(identifier); // List must already exist if `identifier` is in `listOrder`.
             if (!list.isEmpty()) {
-                li.remove();
+                iter.remove();
                 listOrder.add(identifier);
                 return list;
             }
@@ -229,8 +246,8 @@ public class FairQueue<T extends Queueable> {
             individualIndex = index / orderedLists.size();
             listIndex = index % orderedLists.size();
 
-            ListIterator<Long> reducedOrderIter = reducedListOrder.listIterator();
-            ListIterator<List<T>> orderedListsIter = orderedLists.listIterator();
+            Iterator<Long> reducedOrderIter = reducedListOrder.iterator();
+            Iterator<List<T>> orderedListsIter = orderedLists.iterator();
             needsRepeat = false;
 
             while (reducedOrderIter.hasNext() && orderedListsIter.hasNext()) {
