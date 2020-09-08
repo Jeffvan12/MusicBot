@@ -13,13 +13,6 @@ public class Parser {
 
     public Selector<QueuedTrack> parse(String expr) throws ParseException {
         List<Token> tokens = tokenizer.tokenize(expr);
-        for (Token token : tokens) {
-            System.out.println(token.isNumber());
-            System.out.println(token.isSymbol());
-            System.out.println(token.getContentInt());
-            System.out.println(token.getContentString());
-            System.out.println();
-        }
         if (tokens.size() == 1 && "all".equals(tokens.get(0).getContentString())) {
             return new Selector.All<QueuedTrack>();
         }
@@ -36,11 +29,11 @@ public class Parser {
     }
 
     private Selector<QueuedTrack> parseExpr(List<Token> tokens) throws ParseException {
-        Token token = tokens.remove(0);
         Selector<QueuedTrack> selector = parseTerm(tokens);
 
-        while (token.isSymbol() && (token.getContentString().equals("&") || token.getContentString().equals("|")
-                || token.getContentString().equals(","))) {
+        while (!tokens.isEmpty() && tokens.get(0).isSymbol() && (tokens.get(0).getContentString().equals("&")
+                || tokens.get(0).getContentString().equals("|") || tokens.get(0).getContentString().equals(","))) {
+            Token token = tokens.remove(0);
             switch (token.getContentString()) {
                 case "&":
                     selector = new Selector.And<>(selector, parseTerm(tokens));
@@ -71,19 +64,27 @@ public class Parser {
                 case "!":
                     selector = new Selector.Not<>(parseTerm(tokens));
                     break;
+                case "-":
+                    token = tokens.remove(0);
+                    if (!token.isNumber()) {
+                        throw new ParseException();
+                    }
+                    selector = new Selector.IndexRange<>(Integer.MIN_VALUE, token.getContentInt() - 1);
+                    break;
                 default:
                     throw new ParseException();
             }
         } else if (token.isNumber()) {
-            if (tokens.get(0).isSymbol() && tokens.get(0).getContentString().equals("-")) {
+            if (!tokens.isEmpty() && tokens.get(0).isSymbol() && tokens.get(0).getContentString().equals("-")) {
                 tokens.remove(0);
-                Token otherToken = tokens.remove(0);
-                if (!otherToken.isNumber()) {
-                    throw new ParseException();
+                if (tokens.isEmpty() || !tokens.get(0).isNumber()) {
+                    selector = new Selector.IndexRange<>(token.getContentInt() - 1, Integer.MAX_VALUE);
+                } else {
+                    Token otherToken = tokens.remove(0);
+                    selector = new Selector.IndexRange<>(token.getContentInt() - 1, otherToken.getContentInt() - 1);
                 }
-                selector = new Selector.IndexRange<>(token.getContentInt(), otherToken.getContentInt());
             } else {
-                selector = new Selector.Index<>(token.getContentInt());
+                selector = new Selector.IndexRange<>(token.getContentInt() - 1, token.getContentInt() - 1);
             }
         } else {
             selector = new Selector.Search(token.getContentString());

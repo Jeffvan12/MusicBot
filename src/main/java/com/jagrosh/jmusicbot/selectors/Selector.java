@@ -6,19 +6,6 @@ import com.jagrosh.jmusicbot.audio.QueuedTrack;
 public interface Selector<T> {
     public boolean test(int index, T track);
 
-    public static class Index<T> implements Selector<T> {
-        int index;
-
-        public Index(int index) {
-            this.index = index;
-        }
-
-        @Override
-        public boolean test(int index, T track) {
-            return index == this.index;
-        }
-    }
-
     public static class IndexRange<T> implements Selector<T> {
         int start;
         int end;
