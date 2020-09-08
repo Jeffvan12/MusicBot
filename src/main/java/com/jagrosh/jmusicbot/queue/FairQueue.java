@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.jagrosh.jmusicbot.selectors.Selector;
+
 /**
  * @param <T>
  * @author John Grosh (jagrosh)
@@ -144,6 +146,28 @@ public class FairQueue<T extends Queueable> {
         return removed;
     }
 
+    public List<T> removeIf(long identifier, Selector<T> selector) {
+        List<T> list = getOrCreateList(identifier);
+        List<T> removed = new ArrayList<>();
+
+        int newEnd = 0;
+        for (int i = 0; i < list.size(); i++) {
+            T item = list.get(i);
+            if (selector.test(i, item)) {
+                removed.add(item);
+            } else {
+                list.set(newEnd, item);
+                newEnd++;
+            }
+        }
+
+        for (int i = list.size() - 1; i >= newEnd; i--) {
+            list.remove(i);
+        }
+
+        return removed;
+    }
+
     public void clear() {
         for (List<T> list : lists.values()) {
             list.clear();
@@ -153,7 +177,7 @@ public class FairQueue<T extends Queueable> {
     public int shuffle(long identifier) {
         List<T> list = getOrCreateList(identifier);
 
-        for (int i = list.size() - 2; i >= 0; i--) {
+        for (int i = list.size() - 1; i > 0; i--) {
             int otherIndex = (int) (Math.random() * (i + 1));
             T temp = list.get(i);
             list.set(i, list.get(otherIndex));
