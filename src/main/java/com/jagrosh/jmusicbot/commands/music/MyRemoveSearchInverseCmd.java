@@ -8,16 +8,18 @@ import com.jagrosh.jmusicbot.commands.MusicCommand;
 import com.jagrosh.jmusicbot.queue.FairQueue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-public class MyRemoveSearchCmd extends MusicCommand {
-    public MyRemoveSearchCmd(Bot bot) {
+public class MyRemoveSearchInverseCmd extends MusicCommand {
+    public MyRemoveSearchInverseCmd(Bot bot) {
         super(bot);
-        this.name = "myremovesearch";
+        this.name = "myremovesearchinverse";
         this.help = "Removes songs in your queue that contain a specified string";
         this.arguments = "";
-        this.aliases = new String[]{"mrs"};
+        this.aliases = new String[] {"mk"};
         this.beListening = true;
         this.bePlaying = true;
     }
@@ -26,17 +28,13 @@ public class MyRemoveSearchCmd extends MusicCommand {
     public void doCommand(CommandEvent event) {
         AudioHandler handler = (AudioHandler) event.getGuild().getAudioManager().getSendingHandler();
 
-        String[] tracksToRemove = event.getArgs().trim().split(",");
+        List<String> tracksToKeep = Arrays.stream(event.getArgs().trim().split(",")).map(String::trim).collect(Collectors.toList());
 
         long identifier = event.getAuthor().getIdLong();
         FairQueue<QueuedTrack> queue = handler.getQueue();
 
-        List<QueuedTrack> qts = new ArrayList<>();
-        for (String toRemove : tracksToRemove){
-            String finalToRemove = toRemove.trim().toLowerCase();
-            Predicate<QueuedTrack> pred = track -> track.getTrack().getInfo().title.toLowerCase().contains(finalToRemove);
-            qts.addAll(queue.removeIf(identifier, pred));
-        }
+        Predicate<QueuedTrack> pred = track -> listContains(tracksToKeep, track.getTrack().getInfo().title);
+        List<QueuedTrack> qts = (queue.removeIf(identifier, pred));
 
         if (qts.size() > 10) {
             event.reply("Removed " + qts.size() + " songs");
@@ -49,5 +47,14 @@ public class MyRemoveSearchCmd extends MusicCommand {
         }
 
         event.reply(sb.toString());
+    }
+
+    private boolean listContains(List<String> words, String title){
+        for (String word : words) {
+            if (title.toLowerCase().contains(word.toLowerCase())){
+                return false;
+            }
+        }
+        return true;
     }
 }

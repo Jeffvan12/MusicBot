@@ -105,6 +105,7 @@ public class JMusicBot {
                         new MyQueueCmd(bot),
                         new MyRemoveCmd(bot),
                         new MyRemoveSearchCmd(bot),
+                        new MyRemoveSearchInverseCmd(bot),
 
 
                         new ForceRemoveCmd(bot),
