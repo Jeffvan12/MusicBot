@@ -19,12 +19,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class MyQueueRemoveCmd extends MusicCommand {
-    public MyQueueRemoveCmd(Bot bot) {
+public class MyRemoveCmd extends MusicCommand {
+    public MyRemoveCmd(Bot bot) {
         super(bot);
         this.name = "myremove";
-        this.help = "removes a song from the queue";
-        this.arguments = "<position|ALL>";
+        this.help = "Removes songs from your queue";
+        this.arguments = "<position|x-y (where x and y are optional)|comma separated nums i.e. 1,3,7>";
         this.aliases = bot.getConfig().getAliases(this.name);
         this.beListening = true;
         this.bePlaying = true;
