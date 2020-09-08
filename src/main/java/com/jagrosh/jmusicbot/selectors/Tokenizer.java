@@ -58,6 +58,8 @@ class Tokenizer {
 
         if (wordStart != -1) {
             tokens.add(new Token(false, expr.substring(wordStart, lastNonWhitespace + 1)));
+        } else if (numberStart != -1) {
+            tokens.add(new Token(Integer.parseInt(expr.substring(numberStart, expr.length()))));
         }
 
         return tokens;

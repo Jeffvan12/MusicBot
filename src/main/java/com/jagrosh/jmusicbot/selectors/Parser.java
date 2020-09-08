@@ -13,6 +13,13 @@ public class Parser {
 
     public Selector<QueuedTrack> parse(String expr) throws ParseException {
         List<Token> tokens = tokenizer.tokenize(expr);
+        for (Token token : tokens) {
+            System.out.println(token.isNumber());
+            System.out.println(token.isSymbol());
+            System.out.println(token.getContentInt());
+            System.out.println(token.getContentString());
+            System.out.println();
+        }
         if (tokens.size() == 1 && "all".equals(tokens.get(0).getContentString())) {
             return new Selector.All<QueuedTrack>();
         }
