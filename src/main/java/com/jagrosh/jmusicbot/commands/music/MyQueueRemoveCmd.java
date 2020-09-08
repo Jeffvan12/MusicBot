@@ -1,14 +1,19 @@
 package com.jagrosh.jmusicbot.commands.music;
 
 import com.jagrosh.jdautilities.command.CommandEvent;
+import com.jagrosh.jmusicbot.utils.OtherUtil;
+import com.jagrosh.jmusicbot.utils.OtherUtil.*;
 import com.jagrosh.jmusicbot.Bot;
 import com.jagrosh.jmusicbot.audio.AudioHandler;
 import com.jagrosh.jmusicbot.audio.QueuedTrack;
 import com.jagrosh.jmusicbot.commands.MusicCommand;
+import com.jagrosh.jmusicbot.queue.FairQueue;
 import com.jagrosh.jmusicbot.settings.Settings;
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.User;
 
+import javax.print.attribute.standard.MediaSize;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,7 +46,7 @@ public class MyQueueRemoveCmd extends MusicCommand {
             return;
         }
 
-        String input = event.getArgs();
+        String input = event.getArgs().trim().replace(" ", "");
 
         User u;
         try {
@@ -51,24 +56,37 @@ public class MyQueueRemoveCmd extends MusicCommand {
         }
 
         long identifier = event.getAuthor().getIdLong();
+        FairQueue<QueuedTrack> queue = handler.getQueue();
 
         if (handler.getQueue().getList(identifier).size() == 0){
             event.replyError("You don't have a queue");
         }
 
         if (input.contains("-")){
-            List<Integer> range = Arrays.stream(input.split("-")).map(Integer::parseInt).collect(Collectors.toList());
-            if (range.size() != 2 && range.get(1) >= range.get(0)){
+            String[] range = input.split("-");
+
+            int start;
+            int end;
+            try {
+                start = range[0].equals("") ? 0 : Integer.parseInt(range[0]) - 1;
+                end = (range.length == 1) ? queue.getList(event.getAuthor().getIdLong()).size() - 1 : Integer.parseInt(range[1]) - 1;
+            } catch (NumberFormatException e){
+                event.reply("Invalid start or end number");
+                return;
+            }
+
+            if(start > end) {
                 event.replyError("Removing range of positions must be in format x-y where y >= x!");
                 return;
             }
-            List<Integer> toRemove = IntStream.rangeClosed(range.get(0) - 1, range.get(1) - 1).boxed().collect(Collectors.toList());
 
+            start = OtherUtil.clamp(start, 0, queue.getList(event.getAuthor().getIdLong()).size() - 1);
+            end = OtherUtil.clamp(end, 0, queue.getList(event.getAuthor().getIdLong()).size() - 1);
 
+            List<Integer> toRemove = IntStream.rangeClosed(start, end).boxed().collect(Collectors.toList());
+            List<QueuedTrack> qts = queue.specificQueueRemove(toRemove, event.getAuthor().getIdLong());
 
-            List<QueuedTrack> qts = handler.getQueue().specificQueueRemove(toRemove, event.getAuthor().getIdLong());
-
-            if (qts.size() > 10){
+            if (qts.size() > 10) {
                 event.reply("Removed " + qts.size() + " songs");
                 return;
             }
@@ -81,7 +99,20 @@ public class MyQueueRemoveCmd extends MusicCommand {
             event.reply(sb.toString());
 
         } else if(input.contains(",")){
-            List<Integer> toRemove = Arrays.stream(input.split(",")).map(x -> Integer.parseInt(x) - 1).collect(Collectors.toList());
+            List<Integer> toRemove = new ArrayList<>();
+            for (String indexToRemove : input.split(",")){
+                try {
+                    int num = Integer.parseInt(indexToRemove);
+                    if (num > 0 && num <= queue.getList(event.getAuthor().getIdLong()).size()){
+                        toRemove.add(num - 1);
+                    } else{
+                        event.reply(indexToRemove + " is not a valid index");
+                    }
+                } catch (NumberFormatException e){
+                    event.reply(indexToRemove + " is not a valid index");
+                }
+            }
+
             List<QueuedTrack> qts = handler.getQueue().specificQueueRemove(toRemove, event.getAuthor().getIdLong());
 
             if (qts.size() > 10){

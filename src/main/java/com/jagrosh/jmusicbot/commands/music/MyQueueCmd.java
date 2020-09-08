@@ -59,16 +59,17 @@ public class MyQueueCmd extends MusicCommand {
         List<QueuedTrack> list = ah.getQueue().getList(event.getAuthor().getIdLong());
 
         if (list.isEmpty()) {
-            Message nowp = ah.getNowPlaying(event.getJDA());
-            Message nonowp = ah.getNoMusicPlaying(event.getJDA());
-            Message built = new MessageBuilder()
-                    .setContent(event.getClient().getWarning() + " There is no music in the queue!")
-                    .setEmbed((nowp == null ? nonowp : nowp).getEmbeds().get(0)).build();
-            event.reply(built, m ->
-            {
-                if (nowp != null)
-                    bot.getNowplayingHandler().setLastNPMessage(m);
-            });
+            event.reply("Your queue is empty");
+//            Message nowp = ah.getNowPlaying(event.getJDA());
+//            Message nonowp = ah.getNoMusicPlaying(event.getJDA());
+//            Message built = new MessageBuilder()
+//                    .setContent(event.getClient().getWarning() + " There is no music in the queue!")
+//                    .setEmbed((nowp == null ? nonowp : nowp).getEmbeds().get(0)).build();
+//            event.reply(built, m ->
+//            {
+//                if (nowp != null)
+//                    bot.getNowplayingHandler().setLastNPMessage(m);
+//            });
             return;
         }
 
@@ -90,9 +91,6 @@ public class MyQueueCmd extends MusicCommand {
     }
 
 
-
-
-
     private String getQueueTitle(AudioHandler ah, String success, int songslength, long total) {
         StringBuilder sb = new StringBuilder();
         if (ah.getPlayer().getPlayingTrack() != null) {
@@ -103,3 +101,4 @@ public class MyQueueCmd extends MusicCommand {
                 .append(" entries | `").append(FormatUtil.formatTime(total)).append("` ").toString());
     }
 }
+
