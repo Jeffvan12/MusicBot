@@ -13,9 +13,6 @@ public class Parser {
 
     public Selector<QueuedTrack> parse(String expr) throws ParseException {
         List<Token> tokens = tokenizer.tokenize(expr);
-        if (tokens.size() == 1 && "all".equals(tokens.get(0).getContentString())) {
-            return new Selector.All<QueuedTrack>();
-        }
         Selector<QueuedTrack> selector;
         try {
             selector = parseExpr(tokens);
@@ -50,7 +47,7 @@ public class Parser {
 
     private Selector<QueuedTrack> parseTerm(List<Token> tokens) throws ParseException {
         Token token = tokens.remove(0);
-        Selector<QueuedTrack> selector;
+        final Selector<QueuedTrack> selector;
 
         if (token.isSymbol()) {
             switch (token.getContentString()) {
@@ -87,7 +84,11 @@ public class Parser {
                 selector = new Selector.IndexRange<>(token.getContentInt() - 1, token.getContentInt() - 1);
             }
         } else {
-            selector = new Selector.Search(token.getContentString());
+            if (token.getContentString().equals("all")) {
+                selector = new Selector.All<>();
+            } else {
+                selector = new Selector.Search(token.getContentString());
+            }
         }
 
         return selector;
