@@ -48,7 +48,6 @@ public class MyRemoveCmd extends MusicCommand {
                 sb.append(event.getClient().getSuccess()).append(" ").append("Removed **").append(" ")
                         .append(qt.getTrack().getInfo().title).append("**\n");
             }
-
             event.reply(sb.toString());
         }
     }
