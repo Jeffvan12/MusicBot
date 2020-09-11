@@ -18,7 +18,7 @@ public class MyPrioritizeCmd extends MusicCommand {
         this.name = "myprioritize";
         this.help = "Moves songs to the front of the queue";
         this.arguments = "<position|x-y|comma separated nums i.e. 1,3,7>";
-        this.aliases = bot.getConfig().getAliases(this.name);
+        this.aliases = new String[]{"mp"};
         this.beListening = true;
         this.bePlaying = true;
     }
