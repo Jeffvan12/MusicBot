@@ -160,12 +160,37 @@ public class FairQueue<T extends Queueable> {
                 newEnd++;
             }
         }
-
         for (int i = list.size() - 1; i >= newEnd; i--) {
             list.remove(i);
         }
 
         return removed;
+    }
+
+    public List<T> moveToFrontIf(long identifier, Selector<T> selector) {
+        List<T> list = getOrCreateList(identifier);
+        List<T> moved = new ArrayList<>();
+
+        int front = list.size() - 1;
+        for (int i = front; i >= 0; i--) {
+            T item = list.get(i);
+            if (selector.test(i, item)) {
+                moved.add(item);
+            } else {
+                list.set(front, item);
+                front--;
+            }
+        }
+        for (int i = 0; i < moved.size() / 2; i++) {
+            T temp = moved.get(i);
+            moved.set(i, moved.get(moved.size() - i - 1));
+            moved.set(moved.size() - i - 1, temp);
+        }
+        for (int i = 0; i <= front; i++) {
+            list.set(i, moved.get(i));
+        }
+
+        return moved;
     }
 
     public void clear() {

@@ -12,11 +12,11 @@ import com.jagrosh.jmusicbot.selectors.ParseException;
 import com.jagrosh.jmusicbot.selectors.Parser;
 import com.jagrosh.jmusicbot.selectors.Selector;
 
-public class MyRemoveCmd extends MusicCommand {
-    public MyRemoveCmd(Bot bot) {
+public class MyPrioritizeCmd extends MusicCommand {
+    public MyPrioritizeCmd(Bot bot) {
         super(bot);
-        this.name = "myremove";
-        this.help = "Removes songs from your queue";
+        this.name = "myprioritize";
+        this.help = "Moves songs to the front of the queue";
         this.arguments = "<position|x-y|comma separated nums i.e. 1,3,7>";
         this.aliases = bot.getConfig().getAliases(this.name);
         this.beListening = true;
@@ -38,14 +38,14 @@ public class MyRemoveCmd extends MusicCommand {
             return;
         }
 
-        List<QueuedTrack> qts = queue.removeIf(identifier, selector);
+        List<QueuedTrack> qts = queue.moveToFrontIf(identifier, selector);
 
         if (qts.size() > 10 || qts.isEmpty()) {
-            event.reply("Removed " + qts.size() + " songs");
+            event.reply("Prioritised " + qts.size() + " songs");
         } else {
             StringBuilder sb = new StringBuilder();
             for (QueuedTrack qt : qts) {
-                sb.append(event.getClient().getSuccess()).append(" ").append("Removed **").append(" ")
+                sb.append(event.getClient().getSuccess()).append(" ").append("Prioritised **").append(" ")
                         .append(qt.getTrack().getInfo().title).append("**\n");
             }
 
