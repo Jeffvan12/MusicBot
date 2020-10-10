@@ -7,3 +7,6 @@
 nb*.xml
 config.txt
 .idea/
+.gradle/
+gradle/
+build/
