@@ -3,9 +3,3 @@
  */
 
 rootProject.name = 'JMusicBot'
-
-sourceControl {
-    gitRepository("https://github.com/Devoxin/lavaplayer.git") {
-        producesModule("com.sedmelluq:lavaplayer")
-    }
-}
