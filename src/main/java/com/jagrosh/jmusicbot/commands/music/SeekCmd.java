@@ -84,7 +84,7 @@ public class SeekCmd extends MusicCommand {
         long seconds = 0;
         for (int i = 0; i < parts.length; i++) {
             String part = parts[i];
-            if (part.length() != 2 || !part.chars().allMatch(Character::isDigit)) {
+            if ((part.length() != 2 && i != 0) || !part.chars().allMatch(Character::isDigit)) {
                 throw new NumberFormatException();
             }
             long value = Long.parseLong(part);

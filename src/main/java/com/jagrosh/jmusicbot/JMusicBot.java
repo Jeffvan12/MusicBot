@@ -102,6 +102,7 @@ public class JMusicBot {
                         new SCSearchCmd(bot),
                         new ShuffleCmd(bot),
                         new SkipCmd(bot),
+                        new SeekCmd(bot),
                         new MyQueueCmd(bot),
                         new MyRemoveCmd(bot),
                         new MyRemoveSearchCmd(bot),
