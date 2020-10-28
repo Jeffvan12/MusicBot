@@ -28,9 +28,9 @@ import com.jagrosh.jmusicbot.settings.SettingsManager;
 
 import java.util.Objects;
 
-import net.dv8tion.jda.core.JDA;
-import net.dv8tion.jda.core.entities.Game;
-import net.dv8tion.jda.core.entities.Guild;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
 
 /**
  * @author John Grosh <john.a.grosh@gmail.com>
@@ -99,9 +99,9 @@ public class Bot {
     }
 
     public void resetGame() {
-        Game game = config.getGame() == null || config.getGame().getName().equalsIgnoreCase("none") ? null : config.getGame();
-        if (!Objects.equals(jda.getPresence().getGame(), game))
-            jda.getPresence().setGame(game);
+        Activity game = config.getGame() == null || config.getGame().getName().equalsIgnoreCase("none") ? null : config.getGame();
+        if (!Objects.equals(jda.getPresence().getActivity(), game))
+            jda.getPresence().setActivity(game);
     }
 
     public void shutdown() {

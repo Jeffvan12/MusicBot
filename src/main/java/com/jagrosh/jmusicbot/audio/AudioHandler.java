@@ -28,17 +28,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import java.nio.ByteBuffer;
 import com.jagrosh.jmusicbot.queue.FairQueue;
 import com.jagrosh.jmusicbot.settings.Settings;
 import com.jagrosh.jmusicbot.utils.FormatUtil;
 import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioTrack;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.JDA;
-import net.dv8tion.jda.core.MessageBuilder;
-import net.dv8tion.jda.core.audio.AudioSendHandler;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.MessageBuilder;
+import net.dv8tion.jda.api.audio.AudioSendHandler;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 
 /**
  * @author John Grosh <john.a.grosh@gmail.com>
@@ -234,24 +235,37 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
             return "No music playing " + JMusicBot.STOP_EMOJI + " " + FormatUtil.volumeIcon(audioPlayer.getVolume());
     }
 
-    // Audio Send Handler methods
-    @Override
-    public boolean canProvide() {
-        if (lastFrame == null)
-            lastFrame = audioPlayer.provide();
+//    // Audio Send Handler methods
+//    @Override
+//    public boolean canProvide() {
+//        if (lastFrame == null)
+//            lastFrame = audioPlayer.provide();
+//
+//        return lastFrame != null;
+//    }
+//
+//    @Override
+//    public byte[] provide20MsAudio() {
+//        if (lastFrame == null)
+//            lastFrame = audioPlayer.provide();
+//
+//        byte[] data = lastFrame != null ? lastFrame.getData() : null;
+//        lastFrame = null;
+//
+//        return data;
+//    }
 
+    @Override
+    public boolean canProvide()
+    {
+        lastFrame = audioPlayer.provide();
         return lastFrame != null;
     }
 
     @Override
-    public byte[] provide20MsAudio() {
-        if (lastFrame == null)
-            lastFrame = audioPlayer.provide();
-
-        byte[] data = lastFrame != null ? lastFrame.getData() : null;
-        lastFrame = null;
-
-        return data;
+    public ByteBuffer provide20MsAudio()
+    {
+        return ByteBuffer.wrap(lastFrame.getData());
     }
 
     @Override
