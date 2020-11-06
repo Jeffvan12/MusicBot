@@ -101,7 +101,7 @@ public class QueueCmd extends MusicCommand {
             } else {
                 repeat_total += list.get(i).getTrack().getDuration();
                 AudioTrack track = list.get(i).getTrack();
-                songs[i + list.size()] =  "`[" + FormatUtil.formatTime(track.getDuration()) + "]` ** " + REPEAT + " "  + track.getInfo().title + "** - <@" + track.getUserData(Long.class) + ">";
+                songs[i] =  "`[" + FormatUtil.formatTime(track.getDuration()) + "]` ** " + REPEAT + " "  + track.getInfo().title + "** - <@" + track.getUserData(Long.class) + ">";
             }
         }
 
