@@ -40,12 +40,18 @@ public class QueuedTrack implements Queueable {
         return track.getUserData(Long.class);
     }
 
+    @Override
+    public long getDuration() {
+        return track.getDuration();
+    }
+
     public AudioTrack getTrack() {
         return track;
     }
 
     @Override
     public String toString() {
-        return "`[" + FormatUtil.formatTime(track.getDuration()) + "]` **" + track.getInfo().title + "** - <@" + track.getUserData(Long.class) + ">";
+        return "`[" + FormatUtil.formatTime(track.getDuration()) + "]` **" + track.getInfo().title
+                + "** - <@" + track.getUserData(Long.class) + ">";
     }
 }

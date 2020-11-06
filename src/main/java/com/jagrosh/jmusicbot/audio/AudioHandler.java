@@ -55,6 +55,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
 
     private AudioFrame lastFrame;
 
+    private long trackStartTime;
+
     protected AudioHandler(PlayerManager manager, Guild guild, AudioPlayer player) {
         this.manager = manager;
         this.audioPlayer = player;
@@ -62,7 +64,7 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     }
 
     public int addTrackToFront(QueuedTrack qtrack) {
-        int index = queue.addAt(0, qtrack);
+        int index = queue.addAt(0, qtrack, getRequester(), getUncountedTime());
 
         if (audioPlayer.getPlayingTrack() == null) {
             audioPlayer.playTrack(queue.pull().getTrack());
@@ -73,7 +75,7 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     }
 
     public int addTrack(QueuedTrack qtrack) {
-        int index = queue.add(qtrack);
+        int index = queue.add(qtrack, getRequester(), getUncountedTime());
 
         if (audioPlayer.getPlayingTrack() == null) {
             audioPlayer.playTrack(queue.pull().getTrack());
@@ -81,6 +83,18 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
         } else {
             return index;
         }
+    }
+
+    public boolean seekTo(long time) {
+        AudioTrack track = audioPlayer.getPlayingTrack();
+        if (!track.isSeekable()) {
+            return false;
+        }
+
+        addTime(track);
+        track.setPosition(time);
+        trackStartTime = time;
+        return true;
     }
 
     public FairQueue<QueuedTrack> getQueue() {
@@ -95,7 +109,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     }
 
     public boolean isMusicPlaying(JDA jda) {
-        return guild(jda).getSelfMember().getVoiceState().inVoiceChannel() && audioPlayer.getPlayingTrack() != null;
+        return guild(jda).getSelfMember().getVoiceState().inVoiceChannel()
+                && audioPlayer.getPlayingTrack() != null;
     }
 
     public Set<String> getVotes() {
@@ -107,9 +122,18 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     }
 
     public long getRequester() {
-        if (audioPlayer.getPlayingTrack() == null || audioPlayer.getPlayingTrack().getUserData(Long.class) == null)
+        if (audioPlayer.getPlayingTrack() == null
+                || audioPlayer.getPlayingTrack().getUserData(Long.class) == null)
             return 0;
         return audioPlayer.getPlayingTrack().getUserData(Long.class);
+    }
+
+    public long getUncountedTime() {
+        AudioTrack track = audioPlayer.getPlayingTrack();
+        if (track == null) {
+            return 0;
+        }
+        return track.getDuration() - trackStartTime;
     }
 
     public boolean playFromDefault() {
@@ -121,7 +145,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
         if (settings == null || settings.getDefaultPlaylist() == null)
             return false;
 
-        Playlist pl = manager.getBot().getPlaylistLoader().getPlaylist(settings.getDefaultPlaylist());
+        Playlist pl = manager.getBot().getPlaylistLoader()
+                .getPlaylist(settings.getDefaultPlaylist());
         if (pl == null || pl.getItems().isEmpty())
             return false;
         pl.loadTracks(manager, (at) -> {
@@ -139,6 +164,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     // Audio Events
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
+        queue.addTime(track.getUserData(Long.class), track.getPosition() - trackStartTime);
+
         // if the track ended normally, and we're in repeat mode, re-add it to the queue
         if (manager.getBot().getSettingsManager().getSettings(guildId).getRepeatMode()) {
             queue.addRepeat(new QueuedTrack(track.makeClone(),
@@ -163,6 +190,7 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
 
     @Override
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
+        trackStartTime = 0;
         votes.clear();
         manager.getBot().getNowplayingHandler().onTrackUpdate(guildId, track, this);
     }
@@ -173,7 +201,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
             Guild guild = guild(jda);
             AudioTrack track = audioPlayer.getPlayingTrack();
             MessageBuilder mb = new MessageBuilder();
-            mb.append(FormatUtil.filter(manager.getBot().getConfig().getSuccess() + " **Now Playing in "
+            mb.append(FormatUtil.filter(manager.getBot().getConfig().getSuccess()
+                    + " **Now Playing in "
                     + guild.getSelfMember().getVoiceState().getChannel().getName() + "...**"));
             EmbedBuilder eb = new EmbedBuilder();
             eb.setColor(guild.getSelfMember().getColor());
@@ -182,7 +211,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
                 if (u == null)
                     eb.setAuthor("Unknown (ID:" + getRequester() + ")", null, null);
                 else
-                    eb.setAuthor(u.getName() + "#" + u.getDiscriminator(), null, u.getEffectiveAvatarUrl());
+                    eb.setAuthor(u.getName() + "#" + u.getDiscriminator(), null,
+                            u.getEffectiveAvatarUrl());
             }
 
             try {
@@ -192,17 +222,21 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
             }
 
             if (track instanceof YoutubeAudioTrack && manager.getBot().getConfig().useNPImages()) {
-                eb.setThumbnail("https://img.youtube.com/vi/" + track.getIdentifier() + "/mqdefault.jpg");
+                eb.setThumbnail(
+                        "https://img.youtube.com/vi/" + track.getIdentifier() + "/mqdefault.jpg");
             }
 
             if (track.getInfo().author != null && !track.getInfo().author.isEmpty())
                 eb.setFooter("Source: " + track.getInfo().author, null);
 
-            double progress = (double) audioPlayer.getPlayingTrack().getPosition() / track.getDuration();
-            eb.setDescription((audioPlayer.isPaused() ? JMusicBot.PAUSE_EMOJI : JMusicBot.PLAY_EMOJI) + " "
-                    + FormatUtil.progressBar(progress) + " `[" + FormatUtil.formatTime(track.getPosition()) + "/"
-                    + FormatUtil.formatTime(track.getDuration()) + "]` "
-                    + FormatUtil.volumeIcon(audioPlayer.getVolume()));
+            double progress = (double) audioPlayer.getPlayingTrack().getPosition()
+                    / track.getDuration();
+            eb.setDescription(
+                    (audioPlayer.isPaused() ? JMusicBot.PAUSE_EMOJI : JMusicBot.PLAY_EMOJI) + " "
+                            + FormatUtil.progressBar(progress) + " `["
+                            + FormatUtil.formatTime(track.getPosition()) + "/"
+                            + FormatUtil.formatTime(track.getDuration()) + "]` "
+                            + FormatUtil.volumeIcon(audioPlayer.getVolume()));
 
             return mb.setEmbed(eb.build()).build();
         } else
@@ -212,10 +246,11 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     public Message getNoMusicPlaying(JDA jda) {
         Guild guild = guild(jda);
         return new MessageBuilder()
-                .setContent(FormatUtil.filter(manager.getBot().getConfig().getSuccess() + " **Now Playing...**"))
+                .setContent(FormatUtil
+                        .filter(manager.getBot().getConfig().getSuccess() + " **Now Playing...**"))
                 .setEmbed(new EmbedBuilder().setTitle("No music playing")
-                        .setDescription(JMusicBot.STOP_EMOJI + " " + FormatUtil.progressBar(-1) + " "
-                                + FormatUtil.volumeIcon(audioPlayer.getVolume()))
+                        .setDescription(JMusicBot.STOP_EMOJI + " " + FormatUtil.progressBar(-1)
+                                + " " + FormatUtil.volumeIcon(audioPlayer.getVolume()))
                         .setColor(guild.getSelfMember().getColor()).build())
                 .build();
     }
@@ -227,44 +262,43 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
             String title = track.getInfo().title;
             if (title == null || title.equals("Unknown Title"))
                 title = track.getInfo().uri;
-            return "**" + title + "** [" + (userid == 0 ? "autoplay" : "<@" + userid + ">") + "]" + "\n"
-                    + (audioPlayer.isPaused() ? JMusicBot.PAUSE_EMOJI : JMusicBot.PLAY_EMOJI) + " " + "["
-                    + FormatUtil.formatTime(track.getDuration()) + "] "
+            return "**" + title + "** [" + (userid == 0 ? "autoplay" : "<@" + userid + ">") + "]"
+                    + "\n" + (audioPlayer.isPaused() ? JMusicBot.PAUSE_EMOJI : JMusicBot.PLAY_EMOJI)
+                    + " " + "[" + FormatUtil.formatTime(track.getDuration()) + "] "
                     + FormatUtil.volumeIcon(audioPlayer.getVolume());
         } else
-            return "No music playing " + JMusicBot.STOP_EMOJI + " " + FormatUtil.volumeIcon(audioPlayer.getVolume());
+            return "No music playing " + JMusicBot.STOP_EMOJI + " "
+                    + FormatUtil.volumeIcon(audioPlayer.getVolume());
     }
 
-//    // Audio Send Handler methods
-//    @Override
-//    public boolean canProvide() {
-//        if (lastFrame == null)
-//            lastFrame = audioPlayer.provide();
-//
-//        return lastFrame != null;
-//    }
-//
-//    @Override
-//    public byte[] provide20MsAudio() {
-//        if (lastFrame == null)
-//            lastFrame = audioPlayer.provide();
-//
-//        byte[] data = lastFrame != null ? lastFrame.getData() : null;
-//        lastFrame = null;
-//
-//        return data;
-//    }
+    // // Audio Send Handler methods
+    // @Override
+    // public boolean canProvide() {
+    // if (lastFrame == null)
+    // lastFrame = audioPlayer.provide();
+    //
+    // return lastFrame != null;
+    // }
+    //
+    // @Override
+    // public byte[] provide20MsAudio() {
+    // if (lastFrame == null)
+    // lastFrame = audioPlayer.provide();
+    //
+    // byte[] data = lastFrame != null ? lastFrame.getData() : null;
+    // lastFrame = null;
+    //
+    // return data;
+    // }
 
     @Override
-    public boolean canProvide()
-    {
+    public boolean canProvide() {
         lastFrame = audioPlayer.provide();
         return lastFrame != null;
     }
 
     @Override
-    public ByteBuffer provide20MsAudio()
-    {
+    public ByteBuffer provide20MsAudio() {
         return ByteBuffer.wrap(lastFrame.getData());
     }
 
@@ -276,5 +310,11 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     // Private methods
     private Guild guild(JDA jda) {
         return jda.getGuildById(guildId);
+    }
+
+    private void addTime(AudioTrack track) {
+        long time = track.getPosition();
+        queue.addTime(track.getUserData(Long.class), time - trackStartTime);
+        trackStartTime = time;
     }
 }

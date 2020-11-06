@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -34,26 +33,27 @@ public class FairQueue<T extends Queueable> {
     // Just hope that no-one actually has this id.
     public static final long REPEAT_SENTINEL = Long.MIN_VALUE;
 
-    private final Map<Long, List<T>> lists = new HashMap<>();
-    private final List<Long> listOrder = new ArrayList<>();
+    private final Map<Long, UserQueue<T>> userQueues = new HashMap<>();
 
-    private final List<T> repeatList = new ArrayList<>();
+    private final List<T> repeatList;
 
     public FairQueue() {
-        lists.put(REPEAT_SENTINEL, repeatList);
+        UserQueue<T> repeatQueue = new UserQueue<>(REPEAT_SENTINEL, Long.MAX_VALUE);
+        repeatList = repeatQueue.list;
+        userQueues.put(REPEAT_SENTINEL, repeatQueue);
     }
 
-    public int add(T item) {
-        List<T> list = getOrCreateList(item.getIdentifier());
+    public int add(T item, long playingIdentifier, long uncountedTime) {
+        List<T> list = getOrCreateList(item.getIdentifier()).list;
         list.add(item);
-        return globalIndex(item.getIdentifier(), list.size() - 1);
+        return globalIndex(item.getIdentifier(), list.size() - 1, playingIdentifier, uncountedTime);
     }
 
-    public int addAt(int index, T item) {
-        ListIndex listIndex = localIndex(index);
-        List<T> list = getOrCreateList(item.getIdentifier());
+    public int addAt(int index, T item, long playingIdentifier, long uncountedTime) {
+        ListIndex listIndex = localIndex(index, playingIdentifier, uncountedTime);
+        List<T> list = getOrCreateList(item.getIdentifier()).list;
         list.add(Math.min(listIndex.index, list.size()), item);
-        return globalIndex(item.getIdentifier(), listIndex.index);
+        return globalIndex(item.getIdentifier(), listIndex.index, playingIdentifier, uncountedTime);
     }
 
     public int addRepeat(T item) {
@@ -62,7 +62,7 @@ public class FairQueue<T extends Queueable> {
     }
 
     public int size() {
-        return lists.values().stream().mapToInt(List::size).sum();
+        return userQueues.values().stream().mapToInt(q -> q.list.size()).sum();
     }
 
     public T pull() {
@@ -70,46 +70,63 @@ public class FairQueue<T extends Queueable> {
     }
 
     public boolean isEmpty() {
-        return lists.values().stream().allMatch(List::isEmpty);
+        return userQueues.values().stream().allMatch(q -> q.list.isEmpty());
     }
 
-    public List<T> getList() {
+    public List<T> getList(long playingIdentifier, long uncountedTime) {
         List<T> generalList = new ArrayList<>();
 
-        List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
-        for (int individualIndex = 0; !orderedLists.isEmpty(); individualIndex++) {
-            Iterator<List<T>> iter = orderedLists.iterator();
-            while (iter.hasNext()) {
-                List<T> list = iter.next();
-                if (list.size() <= individualIndex) {
-                    iter.remove();
-                    continue;
-                }
-                generalList.add(list.get(individualIndex));
+        List<UserQueue<T>> queues = userQueues.values().stream().collect(Collectors.toList());
+        long[] queueTimes = new long[queues.size()];
+        int[] queueIndices = new int[queues.size()];
+
+        for (int i = 0; i < queues.size(); i++) {
+            queueTimes[i] = queues.get(i).elapsedTime;
+            if (queues.get(i).identifier == playingIdentifier) {
+                queueTimes[i] += uncountedTime;
             }
         }
 
-        // generalList.addAll(repeatList);
+        while (true) {
+            int minIndex = -1;
+            long minTime = 0;
+            for (int i = 0; i < queues.size(); i++) {
+                if (queueIndices[i] < queues.get(i).list.size()
+                        && (minIndex == -1 || queues.get(i).elapsedTime < minTime)) {
+                    minIndex = i;
+                    minTime = queueTimes[i];
+                }
+            }
+
+            if (minIndex == -1) {
+                break;
+            }
+
+            T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
+            generalList.add(queues.get(minIndex).list.get(queueIndices[minIndex]));
+            queueTimes[minIndex] += track.getDuration();
+            queueIndices[minIndex]++;
+        }
 
         return generalList;
     }
 
     public List<T> getList(long identifier) {
-        return Collections.unmodifiableList(getOrCreateList(identifier));
+        return Collections.unmodifiableList(getOrCreateList(identifier).list);
     }
 
-    public T get(int index) {
-        ListIndex listIndex = localIndex(index);
-        return lists.get(listIndex.identifier).get(listIndex.index);
+    public T get(int index, long playingIdentifier, long uncountedTime) {
+        ListIndex listIndex = localIndex(index, playingIdentifier, uncountedTime);
+        return userQueues.get(listIndex.identifier).list.get(listIndex.index);
     }
 
-    public T remove(int index) {
-        ListIndex listIndex = localIndex(index);
-        return lists.get(listIndex.identifier).remove(listIndex.index);
+    public T remove(int index, long playingIdentifier, long uncountedTime) {
+        ListIndex listIndex = localIndex(index, playingIdentifier, uncountedTime);
+        return userQueues.get(listIndex.identifier).list.remove(listIndex.index);
     }
 
     public T specificQueueRemove(int index, long identifier) {
-        return lists.get(identifier).remove(index);
+        return userQueues.get(identifier).list.remove(index);
     }
 
     public List<T> specificQueueRemove(List<Integer> indicies, long identifier) {
@@ -124,14 +141,14 @@ public class FairQueue<T extends Queueable> {
     }
 
     public int removeAll(long identifier) {
-        List<T> list = getOrCreateList(identifier);
+        List<T> list = getOrCreateList(identifier).list;
         int size = list.size();
         list.clear();
         return size;
     }
 
     public List<T> removeIf(long identifier, Predicate<T> filter) {
-        List<T> list = getOrCreateList(identifier);
+        List<T> list = getOrCreateList(identifier).list;
         List<T> removed = new ArrayList<>();
 
         list.removeIf(e -> {
@@ -147,7 +164,7 @@ public class FairQueue<T extends Queueable> {
     }
 
     public List<T> removeIf(long identifier, Selector<T> selector) {
-        List<T> list = getOrCreateList(identifier);
+        List<T> list = getOrCreateList(identifier).list;
         List<T> removed = new ArrayList<>();
 
         int newEnd = 0;
@@ -168,7 +185,7 @@ public class FairQueue<T extends Queueable> {
     }
 
     public List<T> moveToFrontIf(long identifier, Selector<T> selector) {
-        List<T> list = getOrCreateList(identifier);
+        List<T> list = getOrCreateList(identifier).list;
         List<T> moved = new ArrayList<>();
 
         int front = list.size() - 1;
@@ -194,13 +211,13 @@ public class FairQueue<T extends Queueable> {
     }
 
     public void clear() {
-        for (List<T> list : lists.values()) {
-            list.clear();
+        for (UserQueue<T> queue : userQueues.values()) {
+            queue.list.clear();
         }
     }
 
     public int shuffle(long identifier) {
-        List<T> list = getOrCreateList(identifier);
+        List<T> list = getOrCreateList(identifier).list;
 
         for (int i = list.size() - 1; i > 0; i--) {
             int otherIndex = (int) (Math.random() * (i + 1));
@@ -218,7 +235,7 @@ public class FairQueue<T extends Queueable> {
     }
 
     public int skipAll(long identifier) {
-        List<T> list = getOrCreateList(identifier);
+        List<T> list = getOrCreateList(identifier).list;
         repeatList.addAll(list);
         int size = list.size();
         list.clear();
@@ -228,14 +245,16 @@ public class FairQueue<T extends Queueable> {
     /**
      * Move an item to a different position in the list
      *
-     * @param from The position of the item
-     * @param to   The new position of the item
+     * @param from
+     *                 The position of the item
+     * @param to
+     *                 The new position of the item
      * @return the moved item
      */
-    public T moveItem(int from, int to) {
-        ListIndex listIndexFrom = localIndex(from);
-        ListIndex listIndexTo = localIndex(to);
-        List<T> list = lists.get(listIndexFrom.identifier);
+    public T moveItem(int from, int to, long playingIdentifier, long uncountedTime) {
+        ListIndex listIndexFrom = localIndex(from, playingIdentifier, uncountedTime);
+        ListIndex listIndexTo = localIndex(to, playingIdentifier, uncountedTime);
+        List<T> list = userQueues.get(listIndexFrom.identifier).list;
 
         T item = list.remove(listIndexFrom.index);
         // Insert it into the same queue that it was taken from, even if it's not quite
@@ -244,79 +263,114 @@ public class FairQueue<T extends Queueable> {
         return item;
     }
 
-    private List<T> pullNextList() {
-        Iterator<Long> iter = listOrder.iterator();
-        while (iter.hasNext()) {
-            long identifier = iter.next();
-            List<T> list = lists.get(identifier); // List must already exist if `identifier` is in `listOrder`.
-            if (!list.isEmpty()) {
-                iter.remove();
-                listOrder.add(identifier);
-                return list;
-            }
-        }
-        return repeatList;
-    }
-
-    private int globalIndex(long identifier, int index) {
+    public void addTime(long identifier, long time) {
         if (identifier == REPEAT_SENTINEL) {
-            return size() - repeatList.size() + index;
+            return;
         }
 
-        int orderIndex = listOrder.indexOf(identifier);
-        if (orderIndex == -1) {
-            return -1;
-        }
-
-        int before = 0;
-        for (int i = 0; i < listOrder.size(); i++) {
-            int otherSize = lists.get(listOrder.get(i)).size();
-            int otherIndex = index + (i < orderIndex ? 1 : 0);
-            before += Math.min(otherSize, otherIndex);
-        }
-        return before;
+        getOrCreateList(identifier).elapsedTime += time;
     }
 
-    private ListIndex localIndex(int index) {
-        List<Long> reducedListOrder = new ArrayList<>(listOrder);
-        List<List<T>> orderedLists = listOrder.stream().map(lists::get).collect(Collectors.toList());
-
-        int individualIndex;
-        int listIndex;
-
-        boolean needsRepeat;
-        do {
-            if (orderedLists.isEmpty()) {
-                return new ListIndex(REPEAT_SENTINEL, index);
+    private List<T> pullNextList() {
+        UserQueue<T> minQueue = null;
+        for (UserQueue<T> queue : userQueues.values()) {
+            if (!queue.list.isEmpty()
+                    && (minQueue == null || queue.elapsedTime < minQueue.elapsedTime)) {
+                minQueue = queue;
             }
+        }
+        return minQueue.list;
+    }
 
-            individualIndex = index / orderedLists.size();
-            listIndex = index % orderedLists.size();
+    private int globalIndex(long identifier, int index, long playingIdentifier, long uncountedTime) {
+        List<UserQueue<T>> queues = userQueues.values().stream().collect(Collectors.toList());
+        long[] queueTimes = new long[queues.size()];
+        int[] queueIndices = new int[queues.size()];
 
-            Iterator<Long> reducedOrderIter = reducedListOrder.iterator();
-            Iterator<List<T>> orderedListsIter = orderedLists.iterator();
-            needsRepeat = false;
+        for (int i = 0; i < queues.size(); i++) {
+            queueTimes[i] = queues.get(i).elapsedTime;
+            if (queues.get(i).identifier == playingIdentifier) {
+                queueTimes[i] += uncountedTime;
+            }
+        }
 
-            while (reducedOrderIter.hasNext() && orderedListsIter.hasNext()) {
-                reducedOrderIter.next();
-                List<T> list = orderedListsIter.next();
-                if (list.size() <= individualIndex) {
-                    reducedOrderIter.remove();
-                    orderedListsIter.remove();
-
-                    index -= list.size();
-                    needsRepeat = true;
+        int counter = 0;
+        while (true) {
+            int minIndex = -1;
+            long minTime = 0;
+            for (int i = 0; i < queues.size(); i++) {
+                if (queueIndices[i] < queues.get(i).list.size()
+                        && (minIndex == -1 || queues.get(i).elapsedTime < minTime)) {
+                    minIndex = i;
+                    minTime = queueTimes[i];
                 }
             }
-        } while (needsRepeat);
 
-        return new ListIndex(reducedListOrder.get(listIndex), individualIndex);
+            if (minIndex == -1) {
+                break;
+            }
+
+            if (queues.get(minIndex).identifier == identifier && queueIndices[minIndex] == index) {
+                return counter;
+            }
+
+            T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
+            queueTimes[minIndex] += track.getDuration();
+            queueIndices[minIndex]++;
+
+            counter++;
+        }
+
+        return -1;
     }
 
-    private List<T> getOrCreateList(long identifier) {
-        return lists.computeIfAbsent(identifier, id -> {
-            listOrder.add(0, id);
-            return new ArrayList<>();
+    private ListIndex localIndex(int index, long playingIdentifier, long uncountedTime) {
+        List<UserQueue<T>> queues = userQueues.values().stream().collect(Collectors.toList());
+        long[] queueTimes = new long[queues.size()];
+        int[] queueIndices = new int[queues.size()];
+
+        for (int i = 0; i < queues.size(); i++) {
+            queueTimes[i] = queues.get(i).elapsedTime;
+            if (queues.get(i).identifier == playingIdentifier) {
+                queueTimes[i] += uncountedTime;
+            }
+        }
+
+        int counter = 0;
+        while (true) {
+            int minIndex = -1;
+            long minTime = 0;
+            for (int i = 0; i < queues.size(); i++) {
+                if (queueIndices[i] < queues.get(i).list.size()
+                        && (minIndex == -1 || queues.get(i).elapsedTime < minTime)) {
+                    minIndex = i;
+                    minTime = queueTimes[i];
+                }
+            }
+
+            if (minIndex == -1) {
+                break;
+            }
+
+            if (counter == index) {
+                return new ListIndex(queues.get(minIndex).identifier, queueIndices[minIndex]);
+            }
+
+            T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
+            queueTimes[minIndex] += track.getDuration();
+            queueIndices[minIndex]++;
+
+            counter++;
+        }
+
+        return new ListIndex(0, -1);
+    }
+
+    private UserQueue<T> getOrCreateList(long identifier) {
+        return userQueues.computeIfAbsent(identifier, id -> {
+            return new UserQueue<>(identifier,
+                    userQueues.values().stream().filter(q -> q.identifier != REPEAT_SENTINEL)
+                            .mapToLong(q -> q.elapsedTime).min().orElse(0));
         });
     }
 
@@ -327,6 +381,18 @@ public class FairQueue<T extends Queueable> {
         public ListIndex(long identifier, int index) {
             this.identifier = identifier;
             this.index = index;
+        }
+    }
+
+    private static class UserQueue<T> {
+        public long identifier;
+        public long elapsedTime;
+        public List<T> list;
+
+        public UserQueue(long identifier, long elapsedTime) {
+            this.identifier = identifier;
+            this.elapsedTime = elapsedTime;
+            list = new ArrayList<>();
         }
     }
 }

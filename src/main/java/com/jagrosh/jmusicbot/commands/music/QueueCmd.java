@@ -34,8 +34,6 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.exceptions.PermissionException;
 
-import javax.sound.midi.Track;
-
 /**
  * @author John Grosh <john.a.grosh@gmail.com>
  */
@@ -77,10 +75,10 @@ public class QueueCmd extends MusicCommand {
         } catch (NumberFormatException ignore) {
         }
         AudioHandler ah = (AudioHandler) event.getGuild().getAudioManager().getSendingHandler();
-        List<QueuedTrack> list = ah.getQueue().getList();
-        List<QueuedTrack> repeat_queue = ah.getQueue().getList(FairQueue.REPEAT_SENTINEL);
+        List<QueuedTrack> list = ah.getQueue().getList(ah.getRequester(), ah.getUncountedTime());
+        int nonRepeatLength = list.size() - ah.getQueue().getList(FairQueue.REPEAT_SENTINEL).size();
 
-        if (list.isEmpty() && repeat_queue.isEmpty()) {
+        if (list.isEmpty()) {
             Message nowp = ah.getNowPlaying(event.getJDA());
             Message nonowp = ah.getNoMusicPlaying(event.getJDA());
             Message built = new MessageBuilder()
@@ -93,26 +91,24 @@ public class QueueCmd extends MusicCommand {
             });
             return;
         }
-        String[] songs = new String[list.size() + repeat_queue.size()];
+        String[] songs = new String[list.size()];
         long total = 0;
-        for (int i = 0; i < list.size(); i++) {
-            total += list.get(i).getTrack().getDuration();
-            songs[i] = list.get(i).toString();
-        }
-
         long repeat_total = 0;
-        for (int i = 0; i < repeat_queue.size(); i++) {
-            repeat_total += repeat_queue.get(i).getTrack().getDuration();
-            AudioTrack track = repeat_queue.get(i).getTrack();
-            songs[i + list.size()] =  "`[" + FormatUtil.formatTime(track.getDuration()) + "]` ** " + REPEAT + " "  + track.getInfo().title + "** - <@" + track.getUserData(Long.class) + ">";
+        for (int i = 0; i < list.size(); i++) {
+            if (i < nonRepeatLength) {
+                total += list.get(i).getTrack().getDuration();
+                songs[i] = list.get(i).toString();
+            } else {
+                repeat_total += list.get(i).getTrack().getDuration();
+                AudioTrack track = list.get(i).getTrack();
+                songs[i + list.size()] =  "`[" + FormatUtil.formatTime(track.getDuration()) + "]` ** " + REPEAT + " "  + track.getInfo().title + "** - <@" + track.getUserData(Long.class) + ">";
+            }
         }
-
-
 
         Settings settings = event.getClient().getSettingsFor(event.getGuild());
         long fintotal = total;
         long finrepeattotal = repeat_total;
-        builder.setText((i1, i2) -> getQueueTitle(ah, event.getClient().getSuccess(), list.size(), fintotal, settings.getRepeatMode(), finrepeattotal, repeat_queue.size()))
+        builder.setText((i1, i2) -> getQueueTitle(ah, event.getClient().getSuccess(), nonRepeatLength, fintotal, settings.getRepeatMode(), finrepeattotal, list.size() - nonRepeatLength))
                 .setItems(songs)
                 .setUsers(event.getAuthor())
                 .setColor(event.getSelfMember().getColor())

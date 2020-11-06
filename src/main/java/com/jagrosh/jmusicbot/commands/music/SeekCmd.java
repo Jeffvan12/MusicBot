@@ -58,8 +58,11 @@ public class SeekCmd extends MusicCommand {
             return;
         }
 
-        track.setPosition(newPosition);
-        event.replySuccess("Successfully seeked.");
+        if (handler.seekTo(newPosition)) {
+            event.replySuccess("Successfully seeked.");
+        } else {
+            event.replyError("Failed to seek.");
+        }
     }
 
     long seekBy(long currentSeconds, String seekBy) throws NumberFormatException {
