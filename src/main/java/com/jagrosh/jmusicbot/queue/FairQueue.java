@@ -65,8 +65,9 @@ public class FairQueue<T extends Queueable> {
         return userQueues.values().stream().mapToInt(q -> q.list.size()).sum();
     }
 
-    public T pull() {
-        return pullNextList().remove(0);
+    public TrackFrom<T> pull() {
+        UserQueue<T> queue = pullNextQueue();
+        return new TrackFrom<>(queue.list.remove(0), queue.identifier);
     }
 
     public boolean isEmpty() {
@@ -257,6 +258,7 @@ public class FairQueue<T extends Queueable> {
         List<T> list = userQueues.get(listIndexFrom.identifier).list;
 
         T item = list.remove(listIndexFrom.index);
+        // TODO Fix this for the timed queue.
         // Insert it into the same queue that it was taken from, even if it's not quite
         // the right right location.
         list.add(Math.min(listIndexTo.index, list.size() - 1), item);
@@ -271,7 +273,7 @@ public class FairQueue<T extends Queueable> {
         getOrCreateList(identifier).elapsedTime += time;
     }
 
-    private List<T> pullNextList() {
+    private UserQueue<T> pullNextQueue() {
         UserQueue<T> minQueue = null;
         for (UserQueue<T> queue : userQueues.values()) {
             if (!queue.list.isEmpty()
@@ -279,7 +281,7 @@ public class FairQueue<T extends Queueable> {
                 minQueue = queue;
             }
         }
-        return minQueue.list;
+        return minQueue;
     }
 
     private int globalIndex(long identifier, int index, long playingIdentifier, long uncountedTime) {
@@ -372,6 +374,16 @@ public class FairQueue<T extends Queueable> {
                     userQueues.values().stream().filter(q -> q.identifier != REPEAT_SENTINEL)
                             .mapToLong(q -> q.elapsedTime).min().orElse(0));
         });
+    }
+
+    public static class TrackFrom<T> {
+        public T track;
+        public long identifier;
+
+        public TrackFrom(T track, long identifier) {
+            this.track = track;
+            this.identifier = identifier;
+        }
     }
 
     private static class ListIndex {

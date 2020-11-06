@@ -30,6 +30,7 @@ import java.util.Set;
 
 import java.nio.ByteBuffer;
 import com.jagrosh.jmusicbot.queue.FairQueue;
+import com.jagrosh.jmusicbot.queue.FairQueue.TrackFrom;
 import com.jagrosh.jmusicbot.settings.Settings;
 import com.jagrosh.jmusicbot.utils.FormatUtil;
 import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioTrack;
@@ -56,6 +57,7 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     private AudioFrame lastFrame;
 
     private long trackStartTime;
+    private long trackFromQueue;
 
     protected AudioHandler(PlayerManager manager, Guild guild, AudioPlayer player) {
         this.manager = manager;
@@ -67,7 +69,9 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
         int index = queue.addAt(0, qtrack, getRequester(), getUncountedTime());
 
         if (audioPlayer.getPlayingTrack() == null) {
-            audioPlayer.playTrack(queue.pull().getTrack());
+            TrackFrom<QueuedTrack> trackFrom = queue.pull();
+            audioPlayer.playTrack(trackFrom.track.getTrack());
+            trackFromQueue = trackFrom.identifier;
             return index - 1;
         } else {
             return index;
@@ -78,7 +82,9 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
         int index = queue.add(qtrack, getRequester(), getUncountedTime());
 
         if (audioPlayer.getPlayingTrack() == null) {
-            audioPlayer.playTrack(queue.pull().getTrack());
+            TrackFrom<QueuedTrack> trackFrom = queue.pull();
+            audioPlayer.playTrack(trackFrom.track.getTrack());
+            trackFromQueue = trackFrom.identifier;
             return index - 1;
         } else {
             return index;
@@ -164,7 +170,9 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     // Audio Events
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
-        queue.addTime(track.getUserData(Long.class), track.getPosition() - trackStartTime);
+        if (track.getUserData(Long.class) != null) {
+            queue.addTime(trackFromQueue, track.getPosition() - trackStartTime);
+        }
 
         // if the track ended normally, and we're in repeat mode, re-add it to the queue
         if (manager.getBot().getSettingsManager().getSettings(guildId).getRepeatMode()) {
@@ -183,14 +191,15 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
                 player.setPaused(false);
             }
         } else {
-            QueuedTrack qt = queue.pull();
-            player.playTrack(qt.getTrack());
+            TrackFrom<QueuedTrack> trackFrom = queue.pull();
+            player.playTrack(trackFrom.track.getTrack());
+            trackFromQueue = trackFrom.identifier;
         }
     }
 
     @Override
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
-        trackStartTime = 0;
+        trackStartTime = track.getPosition();
         votes.clear();
         manager.getBot().getNowplayingHandler().onTrackUpdate(guildId, track, this);
     }
