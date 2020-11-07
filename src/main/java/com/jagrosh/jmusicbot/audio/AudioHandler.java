@@ -66,7 +66,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     }
 
     public int addTrackToFront(QueuedTrack qtrack) {
-        int index = queue.addAt(0, qtrack, getRequester(), getUncountedTime());
+        updateQueueTimes();
+        int index = queue.addAt(0, qtrack);
 
         if (audioPlayer.getPlayingTrack() == null) {
             TrackFrom<QueuedTrack> trackFrom = queue.pull();
@@ -79,7 +80,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     }
 
     public int addTrack(QueuedTrack qtrack) {
-        int index = queue.add(qtrack, getRequester(), getUncountedTime());
+        updateQueueTimes();
+        int index = queue.add(qtrack);
 
         if (audioPlayer.getPlayingTrack() == null) {
             TrackFrom<QueuedTrack> trackFrom = queue.pull();
@@ -97,13 +99,15 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
             return false;
         }
 
-        addTime(track);
-        track.setPosition(time);
-        trackStartTime = time;
+        addTime(track); // Save the current time.
+        track.setPosition(time); // Change the time.
+        trackStartTime = time; // Update the start time.
+        addTime(track); // Update the effective time.
         return true;
     }
 
     public FairQueue<QueuedTrack> getQueue() {
+        updateQueueTimes();
         return queue;
     }
 
@@ -134,12 +138,20 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
         return audioPlayer.getPlayingTrack().getUserData(Long.class);
     }
 
+    @Deprecated
     public long getUncountedTime() {
         AudioTrack track = audioPlayer.getPlayingTrack();
         if (track == null) {
             return 0;
         }
         return track.getDuration() - trackStartTime;
+    }
+
+    public void updateQueueTimes() {
+        AudioTrack track = audioPlayer.getPlayingTrack();
+        if (track != null) {
+            addTime(track);
+        }
     }
 
     public boolean playFromDefault() {
@@ -170,9 +182,7 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     // Audio Events
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
-        if (track.getUserData(Long.class) != null) {
-            queue.addTime(trackFromQueue, track.getPosition() - trackStartTime);
-        }
+        addTime(track);
 
         // if the track ended normally, and we're in repeat mode, re-add it to the queue
         if (manager.getBot().getSettingsManager().getSettings(guildId).getRepeatMode()) {
@@ -200,6 +210,7 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     @Override
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
         trackStartTime = track.getPosition();
+        addTime(track); // Set the effective time.
         votes.clear();
         manager.getBot().getNowplayingHandler().onTrackUpdate(guildId, track, this);
     }
@@ -323,7 +334,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
 
     private void addTime(AudioTrack track) {
         long time = track.getPosition();
-        queue.addTime(track.getUserData(Long.class), time - trackStartTime);
+        queue.addTime(trackFromQueue, time - trackStartTime);
         trackStartTime = time;
+        queue.setEffectiveDifference(trackFromQueue, track.getDuration() - time);
     }
 }

@@ -75,7 +75,7 @@ public class QueueCmd extends MusicCommand {
         } catch (NumberFormatException ignore) {
         }
         AudioHandler ah = (AudioHandler) event.getGuild().getAudioManager().getSendingHandler();
-        List<QueuedTrack> list = ah.getQueue().getList(ah.getRequester(), ah.getUncountedTime());
+        List<QueuedTrack> list = ah.getQueue().getList();
         int nonRepeatLength = list.size() - ah.getQueue().getList(FairQueue.REPEAT_SENTINEL).size();
 
         if (list.isEmpty()) {

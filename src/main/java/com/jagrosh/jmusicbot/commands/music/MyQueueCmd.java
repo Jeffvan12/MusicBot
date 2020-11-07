@@ -1,5 +1,8 @@
 package com.jagrosh.jmusicbot.commands.music;
 
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import com.jagrosh.jdautilities.command.CommandEvent;
 import com.jagrosh.jdautilities.menu.Paginator;
 import com.jagrosh.jmusicbot.Bot;
@@ -7,17 +10,10 @@ import com.jagrosh.jmusicbot.JMusicBot;
 import com.jagrosh.jmusicbot.audio.AudioHandler;
 import com.jagrosh.jmusicbot.audio.QueuedTrack;
 import com.jagrosh.jmusicbot.commands.MusicCommand;
-import com.jagrosh.jmusicbot.queue.FairQueue;
-import com.jagrosh.jmusicbot.settings.Settings;
 import com.jagrosh.jmusicbot.utils.FormatUtil;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.exceptions.PermissionException;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.exceptions.PermissionException;
 
 public class MyQueueCmd extends MusicCommand {
 
