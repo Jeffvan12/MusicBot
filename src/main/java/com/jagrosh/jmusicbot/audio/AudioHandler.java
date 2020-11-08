@@ -138,15 +138,6 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
         return audioPlayer.getPlayingTrack().getUserData(Long.class);
     }
 
-    @Deprecated
-    public long getUncountedTime() {
-        AudioTrack track = audioPlayer.getPlayingTrack();
-        if (track == null) {
-            return 0;
-        }
-        return track.getDuration() - trackStartTime;
-    }
-
     public void updateQueueTimes() {
         AudioTrack track = audioPlayer.getPlayingTrack();
         if (track != null) {

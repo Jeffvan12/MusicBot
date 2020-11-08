@@ -299,7 +299,7 @@ public class FairQueue<T extends Queueable> {
         int[] queueIndices = new int[queues.size()];
 
         for (int i = 0; i < queues.size(); i++) {
-            queueTimes[i] = queues.get(i).elapsedTime;
+            queueTimes[i] = queues.get(i).effectiveElapsedTime;
         }
 
         int counter = 0;
@@ -308,7 +308,7 @@ public class FairQueue<T extends Queueable> {
             long minTime = 0;
             for (int i = 0; i < queues.size(); i++) {
                 if (queueIndices[i] < queues.get(i).list.size()
-                        && (minIndex == -1 || queues.get(i).elapsedTime < minTime)) {
+                        && (minIndex == -1 || queueTimes[i] < minTime)) {
                     minIndex = i;
                     minTime = queueTimes[i];
                 }
@@ -338,7 +338,7 @@ public class FairQueue<T extends Queueable> {
         int[] queueIndices = new int[queues.size()];
 
         for (int i = 0; i < queues.size(); i++) {
-            queueTimes[i] = queues.get(i).elapsedTime;
+            queueTimes[i] = queues.get(i).effectiveElapsedTime;
         }
 
         int counter = 0;
@@ -347,7 +347,7 @@ public class FairQueue<T extends Queueable> {
             long minTime = 0;
             for (int i = 0; i < queues.size(); i++) {
                 if (queueIndices[i] < queues.get(i).list.size()
-                        && (minIndex == -1 || queues.get(i).elapsedTime < minTime)) {
+                        && (minIndex == -1 || queueTimes[i] < minTime)) {
                     minIndex = i;
                     minTime = queueTimes[i];
                 }
