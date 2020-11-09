@@ -23,9 +23,11 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import java.nio.ByteBuffer;
@@ -71,22 +73,21 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
 
         if (audioPlayer.getPlayingTrack() == null) {
             TrackFrom<QueuedTrack> trackFrom = queue.pull();
-            audioPlayer.playTrack(trackFrom.track.getTrack());
             trackFromQueue = trackFrom.identifier;
+            audioPlayer.playTrack(trackFrom.track.getTrack());
             return index - 1;
         } else {
             return index;
         }
     }
-
-    public int addTrack(QueuedTrack qtrack) {
+public int addTrack(QueuedTrack qtrack) {
         updateQueueTimes();
         int index = queue.add(qtrack);
 
         if (audioPlayer.getPlayingTrack() == null) {
             TrackFrom<QueuedTrack> trackFrom = queue.pull();
-            audioPlayer.playTrack(trackFrom.track.getTrack());
             trackFromQueue = trackFrom.identifier;
+            audioPlayer.playTrack(trackFrom.track.getTrack());
             return index - 1;
         } else {
             return index;
@@ -174,6 +175,7 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
         addTime(track);
+        queue.setEffectiveDifference(trackFromQueue, 0);
 
         // if the track ended normally, and we're in repeat mode, re-add it to the queue
         if (manager.getBot().getSettingsManager().getSettings(guildId).getRepeatMode()) {
@@ -193,8 +195,8 @@ public class AudioHandler extends AudioEventAdapter implements AudioSendHandler 
             }
         } else {
             TrackFrom<QueuedTrack> trackFrom = queue.pull();
-            player.playTrack(trackFrom.track.getTrack());
             trackFromQueue = trackFrom.identifier;
+            player.playTrack(trackFrom.track.getTrack());
         }
     }
 

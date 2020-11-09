@@ -102,7 +102,7 @@ public class FairQueue<T extends Queueable> {
             }
 
             T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
-            generalList.add(queues.get(minIndex).list.get(queueIndices[minIndex]));
+            generalList.add(track);
             queueTimes[minIndex] += track.getDuration();
             queueIndices[minIndex]++;
         }
