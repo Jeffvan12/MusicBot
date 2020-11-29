@@ -17,6 +17,7 @@ package com.jagrosh.jmusicbot.queue;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -273,6 +274,10 @@ public class FairQueue<T extends Queueable> {
         queue.effectiveElapsedTime += time;
     }
 
+    public long getTime(long identifier) {
+        return getOrCreateQueue(identifier).elapsedTime;
+    }
+
     public void setEffectiveDifference(long identifier, long timeDifference) {
         if (identifier == REPEAT_SENTINEL) {
             return;
@@ -280,6 +285,11 @@ public class FairQueue<T extends Queueable> {
 
         UserQueue<T> queue = getOrCreateQueue(identifier);
         queue.effectiveElapsedTime = queue.elapsedTime + timeDifference;
+    }
+
+    public List<Long> getUsers() {
+        return userQueues.values().stream().sorted(Comparator.comparing(q -> q.elapsedTime))
+                .map(q -> (Long) q.identifier).collect(Collectors.toList());
     }
 
     private UserQueue<T> pullNextQueue() {
