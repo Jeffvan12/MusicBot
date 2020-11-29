@@ -10,3 +10,7 @@ config.txt
 .gradle/
 gradle/
 build/
+bin/
+.classpath
+.project
+.settings/
