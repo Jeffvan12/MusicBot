@@ -72,6 +72,9 @@ public class BotConfig {
 
             // set values
             token = config.getString("token");
+            if (token.equals("BOT_TOKEN_HERE")) {
+                token = System.getenv("MUSIC_BOT_TOKEN");
+            }
             prefix = config.getString("prefix");
             altprefix = config.getString("altprefix");
             helpWord = config.getString("help");
@@ -94,7 +97,7 @@ public class BotConfig {
             dbots = owner == 113156185389092864L;
 
             // we may need to write a new config file
-            boolean write = false;
+            // boolean write = false;
 
             // validate bot token
             if (token == null || token.isEmpty() || token.equalsIgnoreCase("BOT_TOKEN_HERE")) {
@@ -106,7 +109,7 @@ public class BotConfig {
                     prompt.alert(Prompt.Level.WARNING, CONTEXT, "No token provided! Exiting.\n\nConfig Location: " + path.toAbsolutePath().toString());
                     return;
                 } else {
-                    write = true;
+                    // write = true;
                 }
             }
 
@@ -125,12 +128,13 @@ public class BotConfig {
                     prompt.alert(Prompt.Level.ERROR, CONTEXT, "Invalid User ID! Exiting.\n\nConfig Location: " + path.toAbsolutePath().toString());
                     return;
                 } else {
-                    write = true;
+                    // write = true;
                 }
             }
 
-            if (write)
-                writeToFile();
+            // Don't write anything because it risks committing the token to git.
+            // if (write)
+            //     writeToFile();
 
             // if we get through the whole config, it's good to go
             valid = true;
