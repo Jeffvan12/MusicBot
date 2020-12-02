@@ -4,6 +4,7 @@
 /test/
 *.json
 *.txt
+!/config.txt
 nb*.xml
 /.idea/
 /.gradle/
