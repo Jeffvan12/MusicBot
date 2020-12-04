@@ -151,8 +151,9 @@ public class QueueCmd extends MusicCommand {
             if (timeStarted) {
                 sb.append(String.format("%02d", minutes));
             } else {
-                sb.append(minutes).append(':');
+                sb.append(minutes);
             }
+            sb.append(':');
             time %= 60 * 1000;
             long seconds = time / 1000;
             sb.append(String.format("%02d", seconds));
