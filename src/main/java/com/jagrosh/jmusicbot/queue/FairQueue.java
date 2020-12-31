@@ -69,7 +69,20 @@ public class FairQueue<T extends Queueable> {
 
     public TrackFrom<T> pull() {
         UserQueue<T> queue = pullNextQueue();
-        return new TrackFrom<>(queue.list.remove(0), queue.identifier);
+        T track = queue.list.remove(0);
+
+        List<Long> identifiers = new ArrayList<>();
+        identifiers.add(queue.identifier);
+        for (UserQueue<T> otherQueue : userQueues.values()) {
+            if (otherQueue == queue || otherQueue.identifier == REPEAT_SENTINEL) {
+                continue;
+            }
+            if (otherQueue.list.remove(track)) {
+                identifiers.add(otherQueue.identifier);
+            }
+        }
+
+        return new TrackFrom<>(track, identifiers);
     }
 
     public boolean isEmpty() {
@@ -91,8 +104,7 @@ public class FairQueue<T extends Queueable> {
             int minIndex = -1;
             long minTime = 0;
             for (int i = 0; i < queues.size(); i++) {
-                if (queueIndices[i] < queues.get(i).list.size()
-                        && (minIndex == -1 || queueTimes[i] < minTime)) {
+                if (queueIndices[i] < queues.get(i).list.size() && (minIndex == -1 || queueTimes[i] < minTime)) {
                     minIndex = i;
                     minTime = queueTimes[i];
                 }
@@ -245,10 +257,8 @@ public class FairQueue<T extends Queueable> {
     /**
      * Move an item to a different position in the list
      *
-     * @param from
-     *                 The position of the item
-     * @param to
-     *                 The new position of the item
+     * @param from The position of the item
+     * @param to   The new position of the item
      * @return the moved item
      */
     public T moveItem(int from, int to) {
@@ -257,34 +267,41 @@ public class FairQueue<T extends Queueable> {
         List<T> list = userQueues.get(listIndexFrom.identifier).list;
 
         T item = list.remove(listIndexFrom.index);
-        // TODO Fix this for the timed queue.
+        // TODO Fix this for the timed queue (or just remvoe it entirely, it isn't very
+        // useful).
         // Insert it into the same queue that it was taken from, even if it's not quite
         // the right right location.
         list.add(Math.min(listIndexTo.index, list.size() - 1), item);
         return item;
     }
 
-    public void addTime(long identifier, long time) {
-        if (identifier == REPEAT_SENTINEL) {
-            return;
-        }
+    public void addTime(List<Long> identifiers, long time) {
+        time /= identifiers.size();
+        for (long identifier : identifiers) {
+            if (identifier == REPEAT_SENTINEL) {
+                continue;
+            }
 
-        UserQueue<T> queue = getOrCreateQueue(identifier);
-        queue.elapsedTime += time;
-        queue.effectiveElapsedTime += time;
+            UserQueue<T> queue = getOrCreateQueue(identifier);
+            queue.elapsedTime += time;
+            queue.effectiveElapsedTime += time;
+        }
     }
 
     public long getTime(long identifier) {
         return getOrCreateQueue(identifier).elapsedTime;
     }
 
-    public void setEffectiveDifference(long identifier, long timeDifference) {
-        if (identifier == REPEAT_SENTINEL) {
-            return;
-        }
+    public void setEffectiveDifference(List<Long> identifiers, long timeDifference) {
+        timeDifference /= identifiers.size();
+        for (long identifier : identifiers) {
+            if (identifier == REPEAT_SENTINEL) {
+                return;
+            }
 
-        UserQueue<T> queue = getOrCreateQueue(identifier);
-        queue.effectiveElapsedTime = queue.elapsedTime + timeDifference;
+            UserQueue<T> queue = getOrCreateQueue(identifier);
+            queue.effectiveElapsedTime = queue.elapsedTime + timeDifference;
+        }
     }
 
     public List<Long> getUsers() {
@@ -295,8 +312,7 @@ public class FairQueue<T extends Queueable> {
     private UserQueue<T> pullNextQueue() {
         UserQueue<T> minQueue = null;
         for (UserQueue<T> queue : userQueues.values()) {
-            if (!queue.list.isEmpty()
-                    && (minQueue == null || queue.elapsedTime < minQueue.elapsedTime)) {
+            if (!queue.list.isEmpty() && (minQueue == null || queue.elapsedTime < minQueue.elapsedTime)) {
                 minQueue = queue;
             }
         }
@@ -317,8 +333,7 @@ public class FairQueue<T extends Queueable> {
             int minIndex = -1;
             long minTime = 0;
             for (int i = 0; i < queues.size(); i++) {
-                if (queueIndices[i] < queues.get(i).list.size()
-                        && (minIndex == -1 || queueTimes[i] < minTime)) {
+                if (queueIndices[i] < queues.get(i).list.size() && (minIndex == -1 || queueTimes[i] < minTime)) {
                     minIndex = i;
                     minTime = queueTimes[i];
                 }
@@ -356,8 +371,7 @@ public class FairQueue<T extends Queueable> {
             int minIndex = -1;
             long minTime = 0;
             for (int i = 0; i < queues.size(); i++) {
-                if (queueIndices[i] < queues.get(i).list.size()
-                        && (minIndex == -1 || queueTimes[i] < minTime)) {
+                if (queueIndices[i] < queues.get(i).list.size() && (minIndex == -1 || queueTimes[i] < minTime)) {
                     minIndex = i;
                     minTime = queueTimes[i];
                 }
@@ -383,19 +397,18 @@ public class FairQueue<T extends Queueable> {
 
     private UserQueue<T> getOrCreateQueue(long identifier) {
         return userQueues.computeIfAbsent(identifier, id -> {
-            return new UserQueue<>(identifier,
-                    userQueues.values().stream().filter(q -> q.identifier != REPEAT_SENTINEL)
-                            .mapToLong(q -> q.elapsedTime).min().orElse(0));
+            return new UserQueue<>(identifier, userQueues.values().stream().filter(q -> q.identifier != REPEAT_SENTINEL)
+                    .mapToLong(q -> q.elapsedTime).min().orElse(0));
         });
     }
 
     public static class TrackFrom<T> {
         public T track;
-        public long identifier;
+        public List<Long> identifiers;
 
-        public TrackFrom(T track, long identifier) {
+        public TrackFrom(T track, List<Long> identifiers) {
             this.track = track;
-            this.identifier = identifier;
+            this.identifiers = identifiers;
         }
     }
 

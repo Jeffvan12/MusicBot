@@ -51,7 +51,17 @@ public class QueuedTrack implements Queueable {
 
     @Override
     public String toString() {
-        return "`[" + FormatUtil.formatTime(track.getDuration()) + "]` **" + track.getInfo().title
-                + "** - <@" + track.getUserData(Long.class) + ">";
+        return "`[" + FormatUtil.formatTime(track.getDuration()) + "]` **" + track.getInfo().title + "** - <@"
+                + track.getUserData(Long.class) + ">";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof QueuedTrack) {
+            QueuedTrack otherTrack = (QueuedTrack) obj;
+            return track.getInfo().identifier.equals(otherTrack.track.getInfo().identifier);
+        } else {
+            return super.equals(obj);
+        }
     }
 }
