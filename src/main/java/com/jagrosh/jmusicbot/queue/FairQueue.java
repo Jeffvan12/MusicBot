@@ -97,61 +97,6 @@ public class FairQueue<T extends Queueable> {
             accumulator.add(queueIndex.queue.list.get(queueIndex.index));
             return FoldResult.next(accumulator);
         });
-        // // TODO Check that this works with shared time.
-        // List<T> generalList = new ArrayList<>();
-
-        // List<UserQueue<T>> queues =
-        // userQueues.values().stream().collect(Collectors.toList());
-        // long[] queueTimes = new long[queues.size()];
-        // int[] queueIndices = new int[queues.size()];
-        // @SuppressWarnings("unchecked")
-        // HashMap<String, Integer>[] queueShares = new HashMap[queues.size()];
-
-        // int repeatIndex = 0;
-        // for (int i = 0; i < queues.size(); i++) {
-        // if (queues.get(i).identifier == REPEAT_SENTINEL) {
-        // repeatIndex = i;
-        // break;
-        // }
-        // }
-
-        // for (int i = 0; i < queues.size(); i++) {
-        // queueTimes[i] = queues.get(i).effectiveElapsedTime;
-        // }
-
-        // while (true) {
-        // int minIndex = -1;
-        // long minTime = 0;
-        // for (int i = 0; i < queues.size(); i++) {
-        // if (queueIndices[i] < queues.get(i).list.size() && (minIndex == -1 ||
-        // queueTimes[i] < minTime)) {
-        // minIndex = i;
-        // minTime = queueTimes[i];
-        // }
-        // }
-
-        // if (minIndex == -1) {
-        // break;
-        // }
-
-        // T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
-        // if (queueShares[minIndex].getOrDefault(track.getTrackIdentifier(), 0) == 0) {
-        // generalList.add(track);
-        // queueTimes[minIndex] += track.getDuration();
-        // queueIndices[minIndex]++;
-        // for (int i = 0; i < queues.size(); i++) {
-        // if (i != minIndex && i != repeatIndex) {
-        // queueShares[i].compute(track.getTrackIdentifier(),
-        // (id, value) -> value == null ? 1 : value + 1);
-        // }
-        // }
-        // } else {
-        // queueShares[minIndex].compute(track.getTrackIdentifier(), (id, count) ->
-        // count - 1);
-        // }
-        // }
-
-        // return generalList;
     }
 
     private <A, R> R foldList(FoldResult<A, R> result, BiFunction<A, QueueIndex<T>, FoldResult<A, R>> function) {
@@ -415,87 +360,12 @@ public class FairQueue<T extends Queueable> {
                 (accumulator, queueIndex) -> queueIndex.queue.identifier == identifier && queueIndex.index == index
                         ? FoldResult.done(accumulator)
                         : FoldResult.next(accumulator + 1, -1));
-        // List<UserQueue<T>> queues =
-        // userQueues.values().stream().collect(Collectors.toList());
-        // long[] queueTimes = new long[queues.size()];
-        // int[] queueIndices = new int[queues.size()];
-
-        // for (int i = 0; i < queues.size(); i++) {
-        // queueTimes[i] = queues.get(i).effectiveElapsedTime;
-        // }
-
-        // int counter = 0;
-        // while (true) {
-        // int minIndex = -1;
-        // long minTime = 0;
-        // for (int i = 0; i < queues.size(); i++) {
-        // if (queueIndices[i] < queues.get(i).list.size() && (minIndex == -1 ||
-        // queueTimes[i] < minTime)) {
-        // minIndex = i;
-        // minTime = queueTimes[i];
-        // }
-        // }
-
-        // if (minIndex == -1) {
-        // break;
-        // }
-
-        // if (queues.get(minIndex).identifier == identifier && queueIndices[minIndex]
-        // == index) {
-        // return counter;
-        // }
-
-        // T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
-        // queueTimes[minIndex] += track.getDuration();
-        // queueIndices[minIndex]++;
-
-        // counter++;
-        // }
-
-        // return -1;
     }
 
     private QueueIndex<T> localIndex(int index) {
         return foldList(FoldResult.next(0, QUEUE_INDEX_NOT_FOUND),
                 (accumulator, queueIndex) -> accumulator == index ? FoldResult.done(queueIndex)
                         : FoldResult.next(accumulator + 1, QUEUE_INDEX_NOT_FOUND));
-        // List<UserQueue<T>> queues =
-        // userQueues.values().stream().collect(Collectors.toList());
-        // long[] queueTimes = new long[queues.size()];
-        // int[] queueIndices = new int[queues.size()];
-
-        // for (int i = 0; i < queues.size(); i++) {
-        // queueTimes[i] = queues.get(i).effectiveElapsedTime;
-        // }
-
-        // int counter = 0;
-        // while (true) {
-        // int minIndex = -1;
-        // long minTime = 0;
-        // for (int i = 0; i < queues.size(); i++) {
-        // if (queueIndices[i] < queues.get(i).list.size() && (minIndex == -1 ||
-        // queueTimes[i] < minTime)) {
-        // minIndex = i;
-        // minTime = queueTimes[i];
-        // }
-        // }
-
-        // if (minIndex == -1) {
-        // break;
-        // }
-
-        // if (counter == index) {
-        // return new QueueIndex<>(queues.get(minIndex), queueIndices[minIndex]);
-        // }
-
-        // T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
-        // queueTimes[minIndex] += track.getDuration();
-        // queueIndices[minIndex]++;
-
-        // counter++;
-        // }
-
-        // return new QueueIndex<>(null, -1);
     }
 
     public static class TrackFrom<T> {
