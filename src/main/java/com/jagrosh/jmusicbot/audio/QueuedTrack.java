@@ -36,7 +36,12 @@ public class QueuedTrack implements Queueable {
     }
 
     @Override
-    public long getIdentifier() {
+    public String getTrackIdentifier() {
+        return track.getInfo().identifier;
+    }
+
+    @Override
+    public long getUserIdentifier() {
         return track.getUserData(Long.class);
     }
 
