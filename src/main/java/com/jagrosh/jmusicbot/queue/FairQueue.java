@@ -77,7 +77,9 @@ public class FairQueue<T extends Queueable> {
         List<Long> identifiers = new ArrayList<>();
         identifiers.add(queue.identifier);
         for (UserQueue<T> otherQueue : userQueues.values()) {
+            System.out.println("here 1");
             if (otherQueue == queue || otherQueue.identifier == REPEAT_SENTINEL) {
+                System.out.println("here 2");
                 continue;
             }
             if (otherQueue.list.remove(track)) {
@@ -335,6 +337,15 @@ public class FairQueue<T extends Queueable> {
         int[] queueIndices = new int[queues.size()];
         @SuppressWarnings("unchecked")
         HashMap<String, Integer>[] queueShares = new HashMap[queues.size()];
+        @SuppressWarnings("unchecked")
+        HashMap<String, Integer>[] songCounts = new HashMap[queues.size()];
+        for (int i = 0; i < queues.size(); i++) {
+            queueShares[i] = new HashMap<>();
+            songCounts[i] = new HashMap<>();
+            for (T track : queues.get(i).list) {
+                songCounts[i].compute(track.getTrackIdentifier(), (id, count) -> count == null ? 1 : count + 1);
+            }
+        }
 
         int repeatIndex = 0;
         for (int i = 0; i < queues.size(); i++) {
@@ -348,6 +359,7 @@ public class FairQueue<T extends Queueable> {
             queueTimes[i] = queues.get(i).effectiveElapsedTime;
         }
 
+        List<Integer> sharingUsers = new ArrayList<>();
         while (true) {
             int minIndex = -1;
             long minTime = 0;
@@ -369,17 +381,33 @@ public class FairQueue<T extends Queueable> {
                 if (result.done) {
                     break;
                 }
-                queueTimes[minIndex] += track.getDuration();
-                queueIndices[minIndex]++;
+
+                sharingUsers.clear();
                 for (int i = 0; i < queues.size(); i++) {
                     if (i != minIndex && i != repeatIndex) {
-                        queueShares[i].compute(track.getTrackIdentifier(),
-                                (id, value) -> value == null ? 1 : value + 1);
+                        int finalI = i;
+                        songCounts[i].compute(track.getTrackIdentifier(), (id, count) -> {
+                            if (count == null) {
+                                count = 0;
+                            } else if (count != 0) {
+                                count--;
+                                sharingUsers.add(finalI);
+                                queueShares[finalI].compute(track.getTrackIdentifier(),
+                                        (id2, value) -> value == null ? 1 : value + 1);
+                            }
+                            return count;
+                        });
                     }
+                }
+
+                long sharedTime = track.getDuration() / sharingUsers.size();
+                for (int i : sharingUsers) {
+                    queueTimes[i] += sharedTime;
                 }
             } else {
                 queueShares[minIndex].compute(track.getTrackIdentifier(), (id, count) -> count - 1);
             }
+            queueIndices[minIndex]++;
         }
 
         return result.result;
