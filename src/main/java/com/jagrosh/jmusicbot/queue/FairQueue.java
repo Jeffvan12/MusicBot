@@ -375,37 +375,45 @@ public class FairQueue<T extends Queueable> {
             }
 
             T track = queues.get(minIndex).list.get(queueIndices[minIndex]);
-            if (queueShares[minIndex].getOrDefault(track.getTrackIdentifier(), 0) == 0) {
+            if (minIndex == repeatIndex) {
                 result = function.apply(result.accumulator,
                         new QueueIndex<>(queues.get(minIndex), queueIndices[minIndex]));
                 if (result.done) {
                     break;
                 }
+            } else {
+                if (queueShares[minIndex].getOrDefault(track.getTrackIdentifier(), 0) == 0) {
+                    result = function.apply(result.accumulator,
+                            new QueueIndex<>(queues.get(minIndex), queueIndices[minIndex]));
+                    if (result.done) {
+                        break;
+                    }
 
-                sharingUsers.clear();
-                for (int i = 0; i < queues.size(); i++) {
-                    if (i != repeatIndex) {
-                        int finalI = i;
-                        songCounts[i].compute(track.getTrackIdentifier(), (id, count) -> {
-                            if (count == null) {
-                                count = 0;
-                            } else if (count != 0) {
-                                count--;
-                                sharingUsers.add(finalI);
-                                queueShares[finalI].compute(track.getTrackIdentifier(),
-                                        (id2, value) -> value == null ? 1 : value + 1);
-                            }
-                            return count;
-                        });
+                    sharingUsers.clear();
+                    for (int i = 0; i < queues.size(); i++) {
+                        if (i != repeatIndex) {
+                            int finalI = i;
+                            songCounts[i].compute(track.getTrackIdentifier(), (id, count) -> {
+                                if (count == null) {
+                                    count = 0;
+                                } else if (count != 0) {
+                                    count--;
+                                    sharingUsers.add(finalI);
+                                    queueShares[finalI].compute(track.getTrackIdentifier(),
+                                            (id2, value) -> value == null ? 1 : value + 1);
+                                }
+                                return count;
+                            });
+                        }
+                    }
+
+                    long sharedTime = track.getDuration() / sharingUsers.size();
+                    for (int i : sharingUsers) {
+                        queueTimes[i] += sharedTime;
                     }
                 }
-
-                long sharedTime = track.getDuration() / sharingUsers.size();
-                for (int i : sharingUsers) {
-                    queueTimes[i] += sharedTime;
-                }
+                queueShares[minIndex].compute(track.getTrackIdentifier(), (id, count) -> count - 1);
             }
-            queueShares[minIndex].compute(track.getTrackIdentifier(), (id, count) -> count - 1);
             queueIndices[minIndex]++;
         }
 
