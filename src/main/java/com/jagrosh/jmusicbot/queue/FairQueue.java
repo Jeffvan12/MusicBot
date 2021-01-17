@@ -384,7 +384,7 @@ public class FairQueue<T extends Queueable> {
 
                 sharingUsers.clear();
                 for (int i = 0; i < queues.size(); i++) {
-                    if (i != minIndex && i != repeatIndex) {
+                    if (i != repeatIndex) {
                         int finalI = i;
                         songCounts[i].compute(track.getTrackIdentifier(), (id, count) -> {
                             if (count == null) {
@@ -404,9 +404,8 @@ public class FairQueue<T extends Queueable> {
                 for (int i : sharingUsers) {
                     queueTimes[i] += sharedTime;
                 }
-            } else {
-                queueShares[minIndex].compute(track.getTrackIdentifier(), (id, count) -> count - 1);
             }
+            queueShares[minIndex].compute(track.getTrackIdentifier(), (id, count) -> count - 1);
             queueIndices[minIndex]++;
         }
 
