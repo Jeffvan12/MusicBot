@@ -77,9 +77,7 @@ public class FairQueue<T extends Queueable> {
         List<Long> identifiers = new ArrayList<>();
         identifiers.add(queue.identifier);
         for (UserQueue<T> otherQueue : userQueues.values()) {
-            System.out.println("here 1");
             if (otherQueue == queue || otherQueue.identifier == REPEAT_SENTINEL) {
-                System.out.println("here 2");
                 continue;
             }
             if (otherQueue.list.remove(track)) {
